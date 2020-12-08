@@ -1,0 +1,44 @@
+n_epochs = 7, lr = 5e-05
+epoch #0:
+	loss = 0.24
+	accuracy = 93.62
+	precision = 93.49
+	recall = 96.41
+	F1 = 94.85
+epoch #1:
+	loss = 0.16
+	accuracy = 95.29
+	precision = 98.09
+	recall = 94.08
+	F1 = 96.03
+epoch #2:
+	loss = 0.23
+	accuracy = 94.37
+	precision = 93.68
+	recall = 97.44
+	F1 = 95.47
+epoch #3:
+	loss = 0.17
+	accuracy = 95.67
+	precision = 96.15
+	recall = 96.73
+	F1 = 96.43
+epoch #4:
+	loss = 0.30
+	accuracy = 95.54
+	precision = 95.04
+	recall = 97.74
+	F1 = 96.37
+epoch #5:
+	loss = 0.23
+	accuracy = 94.98
+	precision = 96.16
+	recall = 95.61
+	F1 = 95.85
+epoch #6:
+	loss = 0.28
+	accuracy = 95.11
+	precision = 96.23
+	recall = 95.71
+	F1 = 95.95
+
