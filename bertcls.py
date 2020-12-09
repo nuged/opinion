@@ -34,7 +34,7 @@ class myDataset(Dataset):
 class Classifier(nn.Module):
     def __init__(self):
         super(Classifier, self).__init__()
-        self.bert = BertModel.from_pretrained("DeepPavlov/rubert-base-cased-sentence")
+        self.bert = BertForSequenceClassification.from_pretrained("DeepPavlov/rubert-base-cased-sentence")
         # for p in self.bert.parameters():
             # p.requires_grad = False
 
@@ -44,13 +44,13 @@ class Classifier(nn.Module):
         self.fc = nn.Linear(self.config.hidden_size, 1)
 
     def forward(self, *args, **kwargs):
-        x = self.bert(*args, **kwargs).last_hidden_state[:, 0, :]
-        x = nn.ELU(alpha=0.2)(x)
-        x = self.fc(x)
+        x = self.bert(*args, **kwargs).logits  # .last_hidden_state[:, 0, :]
+        # x = nn.ELU(alpha=0.2)(x)
+        # x = self.fc(x)
         return x
 
 
-tokenizer = BertTokenizer.from_pretrained("DeepPavlov/rubert-base-cased-sentence", do_lower_case=True)
+tokenizer = BertTokenizer.from_pretrained("DeepPavlov/rubert-base-cased-sentence", do_lower_case=False)
 
 
 def todevice(d):
@@ -73,7 +73,7 @@ def train(nepochs, model, dl, criterion, opt, test_dl=None, report_every=50):
             input_data = tokenizer(text, padding=True, return_tensors='pt')
             todevice(input_data)
             output = model(**input_data)
-            loss = criterion(output, labels.view(-1, 1).type_as(output))
+            loss = criterion(output, labels.view(-1))
             loss.backward()
             opt.step()
             loss_history.append(loss.item())
@@ -112,7 +112,7 @@ def eval(model, dl, criterion):
             input_data = tokenizer(text, padding=True, return_tensors='pt')
             todevice(input_data)
             output = model(**input_data)
-            loss = criterion(output, labels.view(-1, 1).type_as(output))
+            loss = criterion(output, labels.view(-1))
             mean_loss += loss.item()
             count += 1
             pred = (output > 0).detach().tolist()
@@ -123,7 +123,7 @@ def eval(model, dl, criterion):
 
 def CV(data, labels, n_epochs, lr, bs=32, nfolds=4):
     kf = StratifiedKFold(n_splits=nfolds, shuffle=True, random_state=7)
-    criterion = nn.BCEWithLogitsLoss()
+    criterion = nn.CrossEntropyLoss() # BCEWithLogitsLoss()
 
     results = {m : np.zeros(n_epochs) for m in ['loss', 'accuracy', 'precision', 'recall', 'F1']}
     for fold, (train_ids, test_ids) in enumerate(kf.split(data, labels)):
