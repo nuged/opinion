@@ -34,19 +34,22 @@ class myDataset(Dataset):
 class Classifier(nn.Module):
     def __init__(self):
         super(Classifier, self).__init__()
-        self.bert = BertForSequenceClassification.from_pretrained("DeepPavlov/rubert-base-cased-sentence")
-        # for p in self.bert.parameters():
-            # p.requires_grad = False
+        self.bert = BertModel.from_pretrained("DeepPavlov/rubert-base-cased-sentence")
+        for p in self.bert.parameters():
+            p.requires_grad = False
 
         self.config = self.bert.config
         self.config.num_labels = 2
         self.config.max_position_embeddings = 256
-        self.fc = nn.Linear(self.config.hidden_size, 1)
+        self.fc = nn.Linear(self.config.hidden_size, 1024)
+        self.fc2 = nn.Linear(1024, 2)
 
     def forward(self, *args, **kwargs):
-        x = self.bert(*args, **kwargs).logits  # .last_hidden_state[:, 0, :]
-        # x = nn.ELU(alpha=0.2)(x)
-        # x = self.fc(x)
+        x = self.bert(*args, **kwargs).last_hidden_state[:, 0, :]
+        x = nn.ReLU()(x)
+        x = self.fc(x)
+        x = nn.ReLU()(x)
+        x = self.fc2(x)
         return x
 
 
@@ -176,9 +179,8 @@ if __name__ == "__main__":
     data = p.map(str.strip, data)
     p.close()
 
-    for bs in [32]:
-        for lr in [5e-6]:
-            CV(data, labels, 5, lr, bs=bs, nfolds=5)
+    for lr in [1e-6, 1e-5, 1e-4, 1e-3, 1e-2]:
+        CV(data, labels, 5, lr, bs=32, nfolds=4)
 
     exit(0)
 
