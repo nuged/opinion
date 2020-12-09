@@ -41,14 +41,18 @@ class Classifier(nn.Module):
         self.config = self.bert.config
         self.config.num_labels = 2
         self.config.max_position_embeddings = 256
-        self.fc = nn.Linear(self.config.hidden_size, 1024)
+        self.rec = nn.LSTM(self.config.hidden_size, hidden_size=self.config.hidden_size, batch_first=True,
+                           num_layers=3, dropout=0.3, bidirectional=True)
+        self.fc = nn.Linear(2 * self.config.hidden_size, 1024)
         self.fc2 = nn.Linear(1024, 2)
 
     def forward(self, *args, **kwargs):
-        x = self.bert(*args, **kwargs).last_hidden_state[:, 0, :]
+        x = self.bert(*args, **kwargs).last_hidden_state
+        x = self.rec(x)[1][0].view(-1, 3, 2 * self.config.hidden_size)[:, -1, :]
         x = nn.ReLU()(x)
         x = self.fc(x)
         x = nn.ReLU()(x)
+        x = nn.Dropout(0.5)(x)
         x = self.fc2(x)
         return x
 
