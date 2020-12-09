@@ -9,12 +9,15 @@ from gensim.models import Word2Vec
 texts, labels = make_dataset('data/pos.txt', 'data/neg.txt')
 
 vec = TfidfVectorizer(lowercase=False, min_df=5, tokenizer=lambda x: x, preprocessor=lambda x: x)
-data = vec.fit_transform(texts)
+vdata = vec.fit_transform(texts)
 
-model = Word2Vec(sentences=texts, size=100, workers=10, sg=1, seed=7, iter=10, min_count=5)
-data = np.array([np.sum([model.wv[word] * data[i, vec.vocabulary_[word]]
-                         for word in text if word in model.wv and word in vec.vocabulary_])
-                 for i, text in enumerate(texts)])
+model = Word2Vec(sentences=texts, size=256, workers=10, sg=1, seed=7, iter=10, min_count=5)
+
+data = [np.array([model.wv[word] * vdata[i, vec.vocabulary_[word]]
+                         for word in text if word in model.wv and word in vec.vocabulary_]).sum(axis=0)
+                 for i, text in enumerate(texts)]
+for d in data:
+    print(d.shape)
 print(data.shape)
 print(data[:2])
 exit(0)

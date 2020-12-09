@@ -45,7 +45,7 @@ class Classifier(nn.Module):
 
     def forward(self, *args, **kwargs):
         x = self.bert(*args, **kwargs).last_hidden_state[:, 0, :]
-        x = nn.ELU(alpha=0.2)
+        x = nn.ELU(alpha=0.2)(x)
         x = self.fc(x)
         return x
 
