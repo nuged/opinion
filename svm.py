@@ -4,11 +4,16 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 import numpy as np
+from gensim.models import Word2Vec
 
 texts, labels = make_dataset('data/pos.txt', 'data/neg.txt')
 
-vec = TfidfVectorizer(lowercase=False, min_df=5, tokenizer=lambda x: x, preprocessor=lambda x: x)
-data = vec.fit_transform(texts)
+# vec = TfidfVectorizer(lowercase=False, min_df=5, tokenizer=lambda x: x, preprocessor=lambda x: x)
+# data = vec.fit_transform(texts)
+
+vec = Word2Vec(sentences=texts, size=100, workers=10, sg=1, seed=7, iter=10, min_count=1)
+data = np.array([np.mean([vec.wv[word] for word in text], axis=0) for text in texts])
+print(data.shape)
 cls = SVC(C=1, tol=1e-7, kernel='linear', random_state=0, class_weight='balanced')
 
 kf = StratifiedKFold(n_splits=5, shuffle=True, random_state=1)
@@ -30,6 +35,8 @@ print(f"accuracy = {acc * 100 / 5:4.2f}")
 print(f"precision = {pr * 100 / 5:4.2f}")
 print(f"recall = {rec * 100 / 5:4.2f}")
 print(f"F1 = {f1 * 100 / 5:4.2f}")
+
+exit(0)
 
 cls.fit(data, labels)
 print(data.shape)

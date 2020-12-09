@@ -175,7 +175,7 @@ if __name__ == "__main__":
     data = p.map(str.strip, data)
     p.close()
 
-    for bs in [16, 32, 64]:
+    for bs in [64]:
         for lr in [1e-6, 1e-5, 1e-4, 1e-3]:
             CV(data, labels, 5, lr, bs=bs, nfolds=4)
 
