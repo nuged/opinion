@@ -6,6 +6,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 import numpy as np
 
 texts, labels = make_dataset('data/pos.txt', 'data/neg.txt')
+
 vec = TfidfVectorizer(lowercase=False, min_df=5, tokenizer=lambda x: x, preprocessor=lambda x: x)
 data = vec.fit_transform(texts)
 cls = SVC(C=1, tol=1e-7, kernel='linear', random_state=0, class_weight='balanced')

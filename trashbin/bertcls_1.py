@@ -149,7 +149,7 @@ def CV(data, labels, n_epochs, lr):
 
 
 morph = pymorphy2.MorphAnalyzer()
-with open('opinion/alphabet_rus.txt', encoding='cp1251') as f:
+with open('../opinion/alphabet_rus.txt', encoding='cp1251') as f:
     wlist = set(f.read().strip().split('\n'))
 
 
@@ -169,9 +169,9 @@ def remove_caps(text):
 
 
 if __name__ == "__main__":
-    data = read_data('pos_c.txt')
+    data = read_data('../pos_c.txt')
     labels = [1] * len(data)
-    data.extend(read_data('neg_c.txt'))
+    data.extend(read_data('../neg_c.txt'))
     labels += [0] * (len(data) - len(labels))
 
     p = Pool(processes=4)
@@ -223,6 +223,6 @@ if __name__ == "__main__":
             scores.append(score.item())
             answers.append(answer)
 
-    with open("pos_classified.txt", "w") as f:
+    with open("../pos_classified.txt", "w") as f:
         for i, text in enumerate(data):
             print(f"{text}\t{answers[i]}\t{scores[i]}", file=f)

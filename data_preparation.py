@@ -75,17 +75,18 @@ def remove_duplicates(data):
     return result
 
 
-def process_chunk(text):
+def process_chunk(text, replace_nums=True):
     text = remove_links(text)
     text = remove_emoji(text)
-    text = replace_numbers(text)
+    if replace_nums:
+        text = replace_numbers(text)
     text = tokenize(text)
     text = map(lemmatize, text)
     text = filter(lambda x: x not in stopwords and x not in punctuation, text)
     return list(text)
 
 
-def process_data(data, num_processes=4, chunk_size=64):
+def process_data(data, num_processes=12, chunk_size=64):
     p = Pool(num_processes)
     res = p.map(process_chunk, data, chunksize=chunk_size)
     p.close()
@@ -98,7 +99,6 @@ def remove_short(data):
 
 def load(filename):
     data = read_data(filename)
-    # data = remove_duplicates(data)
     data = process_data(data)
     data = enumerate(data)
     data = remove_duplicates(data)
@@ -128,5 +128,8 @@ if __name__ == "__main__":
     for file in ['data/pos.txt', 'data/neg.txt']:
         ids, _ = load(file)
         print(len(ids))
-        print(_[:10])
+        print(_[:5])
+        print(_[-5:])
         choose(file, file[5:-4] + '_c.txt', ids)
+
+# Единичные ФАКТЫ в Чамзинском и Лямбирском районах.
