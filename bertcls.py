@@ -64,7 +64,7 @@ def train(nepochs, model, dl, criterion, opt, test_dl=None, report_every=50):
     for epoch in range(nepochs):
         loss_history = []
         model.train()
-        print(f"\nEpoch {epoch}:")
+        # print(f"\nEpoch {epoch}:")
         running_loss = 0
         for i, (text, labels) in enumerate(dl):
             labels = labels.to(device)
@@ -78,7 +78,7 @@ def train(nepochs, model, dl, criterion, opt, test_dl=None, report_every=50):
             loss_history.append(loss.item())
             running_loss += loss.item()
             if i % report_every == report_every - 1:
-                print(f"iter {i}, loss={running_loss / report_every:3.2f}")
+                # print(f"iter {i}, loss={running_loss / report_every:3.2f}")
                 running_loss = 0
         loss_train.append(loss_history)
 
@@ -154,7 +154,7 @@ def CV(data, labels, n_epochs, lr, bs=32, nfolds=4):
     for metric in results:
         results[metric] /= nfolds
 
-    print(f"\nn_epochs = {n_epochs}, lr = {lr}")
+    print(f"\nn_epochs = {n_epochs}, lr = {lr}, bs = {bs}")
     for i in range(n_epochs):
         print(f"epoch #{i}:")
         for metric in results:
@@ -175,8 +175,9 @@ if __name__ == "__main__":
     data = p.map(str.strip, data)
     p.close()
 
-    for lr in [1e-5]:
-        CV(data, labels, 7, lr, bs=32, nfolds=4)
+    for bs in [16, 32, 64]:
+        for lr in [1e-6, 1e-5, 1e-4, 1e-3]:
+            CV(data, labels, 5, lr, bs=bs, nfolds=4)
 
     exit(0)
 
