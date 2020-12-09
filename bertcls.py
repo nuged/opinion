@@ -35,20 +35,20 @@ class Classifier(nn.Module):
     def __init__(self):
         super(Classifier, self).__init__()
         self.bert = BertModel.from_pretrained("DeepPavlov/rubert-base-cased-sentence")
-        for p in self.bert.parameters():
-            p.requires_grad = False
+        # for p in self.bert.parameters():
+        #     p.requires_grad = False
 
         self.config = self.bert.config
         self.config.num_labels = 2
         self.config.max_position_embeddings = 256
         self.rec = nn.LSTM(self.config.hidden_size, hidden_size=self.config.hidden_size, batch_first=True,
                            num_layers=3, dropout=0.3, bidirectional=True)
-        self.fc = nn.Linear(2 * self.config.hidden_size, 1024)
+        self.fc = nn.Linear(self.config.hidden_size, 1024)
         self.fc2 = nn.Linear(1024, 2)
 
     def forward(self, *args, **kwargs):
-        x = self.bert(*args, **kwargs).last_hidden_state
-        x = self.rec(x)[1][0].view(-1, 3, 2 * self.config.hidden_size)[:, -1, :]
+        x = self.bert(*args, **kwargs).last_hidden_state[:, 0, :]
+        # x = self.rec(x)[1][0].view(-1, 3, 2 * self.config.hidden_size)[:, -1, :]
         x = nn.ReLU()(x)
         x = self.fc(x)
         x = nn.ReLU()(x)
@@ -183,7 +183,7 @@ if __name__ == "__main__":
     data = p.map(str.strip, data)
     p.close()
 
-    for lr in [1e-6, 1e-5, 1e-4, 1e-3, 1e-2]:
+    for lr in [1e-6, 5e-6, 1e-5]:
         CV(data, labels, 5, lr, bs=32, nfolds=4)
 
     exit(0)

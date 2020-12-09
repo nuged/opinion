@@ -4,28 +4,30 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 import numpy as np
-from gensim.models import Word2Vec
-import gensim.downloader as api
 
-wv = api.load('word2vec-ruscorpora-300')
-for word in wv:
-    print(f"word is {word}")
+ft = {}
+with open('data/ft_native_300_ru_wiki_lenta_lemmatize.vec') as f:
+    for i, line in enumerate(f):
+        if i == 0:
+            continue
+        line = line.strip()
+        line = line.split()
+        word, *vec = line
+        vec = list(map(float, vec))
+        ft[word] = np.array(vec)
 
 texts, labels = make_dataset('data/pos.txt', 'data/neg.txt')
 
-vec = TfidfVectorizer(lowercase=False, min_df=5, tokenizer=lambda x: x, preprocessor=lambda x: x)
+vec = TfidfVectorizer(lowercase=False, tokenizer=lambda x: x, preprocessor=lambda x: x)
 vdata = vec.fit_transform(texts)
 
-#model = Word2Vec(sentences=texts, size=300, workers=10, sg=1, negative=1, seed=7, iter=10, min_count=5)
-
-data = [np.array([model.wv[word] * vdata[i, vec.vocabulary_[word]]
-                         for word in text if word in model.wv and word in vec.vocabulary_]).sum(axis=0)
+data = [np.array([ft[word] * vdata[i, vec.vocabulary_[word]]
+                         for word in text if word in ft and word in vec.vocabulary_]).sum(axis=0)
                  for i, text in enumerate(texts)]
 
 labels = np.array([labels[i] for i, d in enumerate(data) if isinstance(d, np.ndarray)])
 data = np.array([d for d in data if isinstance(d, np.ndarray)])
 print(data.shape)
-
 
 cls = SVC(C=1, tol=1e-7, kernel='linear', random_state=0, class_weight='balanced')
 
