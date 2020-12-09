@@ -50,7 +50,7 @@ class Classifier(nn.Module):
         return x
 
 
-tokenizer = BertTokenizer.from_pretrained("DeepPavlov/rubert-base-cased-sentence", do_lower_case=False)
+tokenizer = BertTokenizer.from_pretrained("DeepPavlov/rubert-base-cased-sentence", do_lower_case=True)
 
 
 def todevice(d):

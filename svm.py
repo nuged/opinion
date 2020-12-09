@@ -16,11 +16,11 @@ model = Word2Vec(sentences=texts, size=256, workers=10, sg=1, seed=7, iter=10, m
 data = [np.array([model.wv[word] * vdata[i, vec.vocabulary_[word]]
                          for word in text if word in model.wv and word in vec.vocabulary_]).sum(axis=0)
                  for i, text in enumerate(texts)]
-for d in data:
-    print(d.shape)
-print(data.shape)
-print(data[:2])
-exit(0)
+
+
+labels = [labels[i] for i, d in enumerate(data) if isinstance(d, np.ndarray)]
+data = np.array([d for d in data if isinstance(d, np.ndarray)])
+
 cls = SVC(C=1, tol=1e-7, kernel='linear', random_state=0, class_weight='balanced')
 
 kf = StratifiedKFold(n_splits=5, shuffle=True, random_state=1)
