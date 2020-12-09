@@ -44,7 +44,8 @@ class Classifier(nn.Module):
         self.fc = nn.Linear(self.config.hidden_size, 1)
 
     def forward(self, *args, **kwargs):
-        x = self.bert(*args, **kwargs).pooler_output
+        x = self.bert(*args, **kwargs).last_hidden_state[:, 0, :]
+        x = nn.ELU(alpha=0.2)
         x = self.fc(x)
         return x
 
@@ -177,7 +178,7 @@ if __name__ == "__main__":
 
     for bs in [32]:
         for lr in [5e-6]:
-            CV(data, labels, 7, lr, bs=bs, nfolds=5)
+            CV(data, labels, 5, lr, bs=bs, nfolds=5)
 
     exit(0)
 
