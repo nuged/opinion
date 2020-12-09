@@ -52,7 +52,7 @@ class Classifier(nn.Module):
         x = nn.ReLU()(x)
         x = self.fc(x)
         x = nn.ReLU()(x)
-        x = nn.Dropout(0.5)(x)
+        x = nn.Dropout(0.7)(x)
         x = self.fc2(x)
         return x
 
@@ -72,7 +72,7 @@ def train(nepochs, model, dl, criterion, opt, test_dl=None, report_every=50):
     for epoch in range(nepochs):
         loss_history = []
         model.train()
-        # print(f"\nEpoch {epoch}:")
+        print(f"\nEpoch {epoch}:")
         running_loss = 0
         for i, (text, labels) in enumerate(dl):
             labels = labels.to(device)
@@ -86,7 +86,7 @@ def train(nepochs, model, dl, criterion, opt, test_dl=None, report_every=50):
             loss_history.append(loss.item())
             running_loss += loss.item()
             if i % report_every == report_every - 1:
-                # print(f"iter {i}, loss={running_loss / report_every:3.2f}")
+                print(f"iter {i}, loss={running_loss / report_every:3.2f}")
                 running_loss = 0
         loss_train.append(loss_history)
 
@@ -145,7 +145,7 @@ def CV(data, labels, n_epochs, lr, bs=32, nfolds=4):
 
         cls = Classifier()
         cls.to(device)
-        optimizer = optim.Adam(cls.parameters(), lr=lr)
+        optimizer = optim.Adam(cls.parameters(), lr=lr, weight_decay=1e-6)
 
         loss_history, test_results = train(n_epochs, cls, train_dl, criterion, optimizer, test_dl)
 
@@ -183,8 +183,8 @@ if __name__ == "__main__":
     data = p.map(str.strip, data)
     p.close()
 
-    for lr in [1e-6, 5e-6, 1e-5]:
-        CV(data, labels, 5, lr, bs=32, nfolds=4)
+    for lr in [2e-6]:
+        CV(data, labels, 13, lr, bs=64, nfolds=5)
 
     exit(0)
 
