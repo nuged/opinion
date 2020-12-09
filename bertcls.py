@@ -115,7 +115,7 @@ def eval(model, dl, criterion):
             loss = criterion(output, labels.view(-1))
             mean_loss += loss.item()
             count += 1
-            pred = (output > 0).detach().tolist()
+            pred = output.argmax(axis=1).detach().tolist()
             y_pred.extend(pred)
             y_true.extend((labels.tolist()))
     return mean_loss / count, y_true, y_pred
