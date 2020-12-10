@@ -1,4 +1,4 @@
-from transformers import BertTokenizer, BertForSequenceClassification, BertModel
+from transformers import BertTokenizer, BertForSequenceClassification, BertModel, AdamW
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 from data_preparation import read_data, remove_emoji, remove_links, remove_duplicates
@@ -39,16 +39,12 @@ class Classifier(nn.Module):
         #     p.requires_grad = False
 
         self.config = self.bert.config
-        self.config.num_labels = 2
         self.config.max_position_embeddings = 256
-        self.rec = nn.LSTM(self.config.hidden_size, hidden_size=self.config.hidden_size, batch_first=True,
-                           num_layers=3, dropout=0.3, bidirectional=True)
         self.fc = nn.Linear(self.config.hidden_size, 1024)
         self.fc2 = nn.Linear(1024, 2)
 
     def forward(self, *args, **kwargs):
         x = self.bert(*args, **kwargs).last_hidden_state[:, 0, :]
-        # x = self.rec(x)[1][0].view(-1, 3, 2 * self.config.hidden_size)[:, -1, :]
         x = nn.ReLU()(x)
         x = self.fc(x)
         x = nn.ReLU()(x)
@@ -65,46 +61,46 @@ def todevice(d):
         d[k] = d[k].to(device)
 
 
-def train(nepochs, model, dl, criterion, opt, test_dl=None, report_every=50):
-    loss_train = []
-    test_results = defaultdict(list)
+def apply_model(model, texts):
+    input_data = tokenizer(texts, padding=True, return_tensors='pt')
+    todevice(input_data)
+    output = model(**input_data)
+    return output
 
+
+def get_scores(y_true, y_pred):
+    result = {'accuracy': accuracy_score(y_true, y_pred) * 100, 'precision': precision_score(y_true, y_pred) * 100,
+              'recall': recall_score(y_true, y_pred) * 100, 'F1': f1_score(y_true, y_pred) * 100}
+    return result
+
+
+def train_epoch(model, train_loader, criterion, optimizer, report_every=0):
+    model.train()
+    loss_history = []
+    running_loss = 0
+    for i, (texts, labels) in enumerate(train_loader):
+        optimizer.zero_grad()
+        output = apply_model(model, texts)
+        loss = criterion(output, labels.to(device).view(-1))
+        loss.backward()
+        optimizer.step()
+        loss_history.append(loss.item())
+        running_loss += loss.item()
+        if report_every and i % report_every == report_every - 1:
+            print(f"iter {i}, loss={running_loss / report_every:3.2f}")
+            running_loss = 0
+    return loss_history
+
+
+def train(nepochs, model, train_loader, criterion, optimizer, test_loader=None, report_every=0):
     for epoch in range(nepochs):
-        loss_history = []
-        model.train()
-        print(f"\nEpoch {epoch}:")
-        running_loss = 0
-        for i, (text, labels) in enumerate(dl):
-            labels = labels.to(device)
-            opt.zero_grad()
-            input_data = tokenizer(text, padding=True, return_tensors='pt')
-            todevice(input_data)
-            output = model(**input_data)
-            loss = criterion(output, labels.view(-1))
-            loss.backward()
-            opt.step()
-            loss_history.append(loss.item())
-            running_loss += loss.item()
-            if i % report_every == report_every - 1:
-                print(f"iter {i}, loss={running_loss / report_every:3.2f}")
-                running_loss = 0
-        loss_train.append(loss_history)
-
-        if test_dl is not None:
-            test_loss, y_true, y_pred = eval(model, test_dl, criterion)
-            acc = accuracy_score(y_true, y_pred) * 100
-            pr = precision_score(y_true, y_pred) * 100
-            rec = recall_score(y_true, y_pred) * 100
-            f1 = f1_score(y_true, y_pred) * 100
-            test_results['loss'].append(test_loss)
-            test_results['accuracy'].append(acc)
-            test_results['precision'].append(pr)
-            test_results['recall'].append(rec)
-            test_results['F1'].append(f1)
-    if test_dl is None:
-        return loss_history
-    else:
-        return loss_history, test_results
+        epoch_history = train_epoch(model, train_loader, criterion, optimizer, report_every)
+        if test_loader is not None:
+            test_loss, y_true, y_pred = eval(model, test_loader, criterion)
+            scores = get_scores(y_true, y_pred)
+            yield epoch_history, test_loss, scores
+        else:
+            yield epoch_history
 
 
 def eval(model, dl, criterion):
@@ -113,13 +109,10 @@ def eval(model, dl, criterion):
     count = 0
     y_pred = []
     y_true = []
-    for text, labels in dl:
+    for texts, labels in dl:
         with torch.no_grad():
-            labels = labels.to(device)
-            input_data = tokenizer(text, padding=True, return_tensors='pt')
-            todevice(input_data)
-            output = model(**input_data)
-            loss = criterion(output, labels.view(-1))
+            output = apply_model(model, texts)
+            loss = criterion(output, labels.to(device).view(-1))
             mean_loss += loss.item()
             count += 1
             pred = output.argmax(axis=1).detach().tolist()
@@ -128,48 +121,58 @@ def eval(model, dl, criterion):
     return mean_loss / count, y_true, y_pred
 
 
-def CV(data, labels, n_epochs, lr, bs=32, nfolds=4):
+def CV(data, labels, nfolds=4, train_epochs=3, lr=1e-6, bs=32, wd=1e-6):
+    # TODO: добавить отрисовку и сохранение графика усредненных по всем фолдам потерь на тесте и обучении
     kf = StratifiedKFold(n_splits=nfolds, shuffle=True, random_state=7)
-    criterion = nn.CrossEntropyLoss() # BCEWithLogitsLoss()
+    criterion = nn.CrossEntropyLoss()
 
-    results = {m : np.zeros(n_epochs) for m in ['loss', 'accuracy', 'precision', 'recall', 'F1']}
+    fold_dls = {}
     for fold, (train_ids, test_ids) in enumerate(kf.split(data, labels)):
-        print(f"Fold {fold}")
-        torch.random.manual_seed(7)
-        if torch.cuda.is_available():
-            torch.cuda.manual_seed(7)
         train_ds = myDataset(train_ids, data, labels)
         test_ds = myDataset(test_ids, data, labels)
         train_dl = DataLoader(train_ds, batch_size=bs, shuffle=True)
         test_dl = DataLoader(test_ds, batch_size=bs)
+        fold_dls[fold] = (train_dl, test_dl)
 
-        cls = Classifier()
-        cls.to(device)
-        optimizer = optim.Adam(cls.parameters(), lr=lr, weight_decay=0)
+    saved_models = {i: f'models/CV_{i}.pt' for i in range(nfolds)}
 
-        loss_history, test_results = train(n_epochs, cls, train_dl, criterion, optimizer, test_dl)
+    for epoch in range(train_epochs):
+        # history_avg = []
+        loss_avg = []
+        scores_avg = defaultdict(list)
+        for fold in range(nfolds):
+            if epoch == 0:
+                cls = Classifier().to(device)
+                optimizer = AdamW(cls.parameters(), lr=lr, weight_decay=wd)
+            else:
+                checkpoint = torch.load(saved_models[fold])
+                cls.load_state_dict(checkpoint['model_state_dict'])
+                optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            train_dl, test_dl = fold_dls[fold]
+            epoch_history, test_loss, test_scores = next(train(1, cls, train_dl, criterion, optimizer, test_dl))
+            torch.save({
+                'model_state_dict': cls.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+            }, saved_models[fold])
+            # history_avg.append(epoch_history)
+            loss_avg.append(test_loss)
+            [scores_avg[m].append(val) for m, val in test_scores.items()]
+        # history_avg = np.mean(history_avg, axis=0)
+        loss_avg = np.mean(loss_avg)
+        scores_avg = {m: np.mean(vals) for m, vals in scores_avg.items()}
+        print(f"epoch #{epoch}")
+        print(f"\tval_loss={loss_avg:4.3f}")
+        for m, val in scores_avg.items():
+            print(f"\t{m}={val:4.2f}")
 
-        print(test_results)
 
-        for metric in test_results:
-            results[metric] += np.array(test_results[metric])
-
-        del cls
-        del optimizer
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-
-    for metric in results:
-        results[metric] /= nfolds
-
-    print(f"\nn_epochs = {n_epochs}, lr = {lr}, bs = {bs}")
-    for i in range(n_epochs):
-        print(f"epoch #{i}:")
-        for metric in results:
-            print(f'\t{metric} = {results[metric][i]:4.2f}')
-
-
-morph = pymorphy2.MorphAnalyzer()
+# TODO: исправить говнокод
+# попробовать:
+# увеличить дропаут
+# вовзращение метрик после каждой эпохи обучения и их усреднение по фолдам, возможно,
+# стоит возвращать список с метриками после каждой эпохи
+# выключить слои?
+# регуляризация
 
 if __name__ == "__main__":
     data = read_data('pos_c.txt')
@@ -184,72 +187,4 @@ if __name__ == "__main__":
     p.close()
 
     for lr in [2e-6]:
-        CV(data, labels, 13, lr, bs=64, nfolds=5)
-
-    exit(0)
-
-    cls = Classifier()
-    cls.to(device)
-    optimizer = optim.Adam(cls.parameters(), lr=1e-5)
-
-    train_ds = myDataset(range(len(data)), data, labels)
-    train_dl = DataLoader(train_ds, batch_size=32, shuffle=True)
-    torch.random.manual_seed(7)
-    train(3, cls, train_dl, nn.BCEWithLogitsLoss(), optimizer)
-    print("trained")
-    
-    cls.eval()
-    scores = []
-    answers = []
-    with torch.no_grad():
-        for text in data:
-            input_data = tokenizer(text, return_tensors='pt')
-            todevice(input_data)
-            output = cls(**input_data)
-            answer = (output > 0).item()
-            score = F.sigmoid(output)
-            scores.append(score.item())
-            answers.append(answer)
-
-    with open("classified.txt", "w") as f:
-        for i, text in enumerate(data):
-            print(f"{text}\t{answers[i]}\t{scores[i]}", file=f)
-    
-    exit(0)
-    print(len(data))
-
-    cls = Classifier()
-    cls.to(device)
-    optimizer = optim.Adam(cls.parameters(), lr=1e-5)
-
-    train_ds = myDataset(range(len(data)), data, labels)
-    train_dl = DataLoader(train_ds, batch_size=16, shuffle=True)
-    train(4, cls.to(device), train_dl, nn.BCEWithLogitsLoss(), optimizer)
-    print("trained")
-
-    data = read_data("found_nonums.txt")
-    p = Pool(processes=4)
-    data = p.map(remove_emoji, data)
-    data = p.map(remove_links, data)
-    data = p.map(str.strip, data)
-    data = p.map(remove_caps, data)
-    p.close()
-
-    print(data[:5])
-
-    cls.eval()
-    scores = []
-    answers = []
-    with torch.no_grad():
-        for text in data:
-            input_data = tokenizer(text, return_tensors='pt')
-            todevice(input_data)
-            output = cls(**input_data)
-            answer = (output > 0).item()
-            score = F.sigmoid(output)
-            scores.append(score.item())
-            answers.append(answer)
-
-    with open("classified.txt", "w") as f:
-        for i, text in enumerate(data):
-            print(f"{text}\t{answers[i]}\t{scores[i]}", file=f)
+        CV(data, labels, nfolds=4, train_epochs=3, lr=lr, bs=64, wd=0)
