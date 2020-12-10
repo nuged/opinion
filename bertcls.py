@@ -52,7 +52,7 @@ class Classifier(nn.Module):
         x = nn.ReLU()(x)
         x = self.fc(x)
         x = nn.ReLU()(x)
-        x = nn.Dropout(0.7)(x)
+        x = nn.Dropout(0.5)(x)
         x = self.fc2(x)
         return x
 
@@ -145,7 +145,7 @@ def CV(data, labels, n_epochs, lr, bs=32, nfolds=4):
 
         cls = Classifier()
         cls.to(device)
-        optimizer = optim.Adam(cls.parameters(), lr=lr, weight_decay=1e-6)
+        optimizer = optim.Adam(cls.parameters(), lr=lr, weight_decay=0)
 
         loss_history, test_results = train(n_epochs, cls, train_dl, criterion, optimizer, test_dl)
 

@@ -34,21 +34,19 @@ class myDataset(Dataset):
 class Classifier(nn.Module):
     def __init__(self):
         super(Classifier, self).__init__()
-        self.bert = BertModel.from_pretrained("DeepPavlov/rubert-base-cased-sentence")
+        self.bert = BertModel.from_pretrained("DeepPavlov/rubert-base-cased")
+
         # for p in self.bert.parameters():
         #     p.requires_grad = False
 
         self.config = self.bert.config
         self.config.num_labels = 2
         self.config.max_position_embeddings = 256
-        self.rec = nn.LSTM(self.config.hidden_size, hidden_size=self.config.hidden_size, batch_first=True,
-                           num_layers=3, dropout=0.3, bidirectional=True)
         self.fc = nn.Linear(self.config.hidden_size, 1024)
         self.fc2 = nn.Linear(1024, 2)
 
     def forward(self, *args, **kwargs):
         x = self.bert(*args, **kwargs).last_hidden_state[:, 0, :]
-        # x = self.rec(x)[1][0].view(-1, 3, 2 * self.config.hidden_size)[:, -1, :]
         x = nn.ReLU()(x)
         x = self.fc(x)
         x = nn.ReLU()(x)
@@ -57,7 +55,7 @@ class Classifier(nn.Module):
         return x
 
 
-tokenizer = BertTokenizer.from_pretrained("DeepPavlov/rubert-base-cased-sentence", do_lower_case=False)
+tokenizer = BertTokenizer.from_pretrained("DeepPavlov/rubert-base-cased", do_lower_case=False)
 
 
 def todevice(d):
