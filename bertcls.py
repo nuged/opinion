@@ -134,26 +134,19 @@ def CV(data, labels, nfolds=4, train_epochs=3, lr=1e-6, bs=32, wd=1e-6):
         test_dl = DataLoader(test_ds, batch_size=bs)
         fold_dls[fold] = (train_dl, test_dl)
 
-    saved_models = {i: f'models/CV_{i}.pt' for i in range(nfolds)}
-
+    # saved_models = {i: f'models/CV_{i}.pt' for i in range(nfolds)}
+    saved_models = {i: Classifier() for i in range(nfolds)}
+    saved_opts = {i: AdamW(saved_models[i].parameters(), lr=lr, weight_decay=wd) for i in range(nfolds)}
     for epoch in range(train_epochs):
         # history_avg = []
         loss_avg = []
         scores_avg = defaultdict(list)
         for fold in range(nfolds):
-            if epoch == 0:
-                cls = Classifier().to(device)
-                optimizer = AdamW(cls.parameters(), lr=lr, weight_decay=wd)
-            else:
-                checkpoint = torch.load(saved_models[fold])
-                cls.load_state_dict(checkpoint['model_state_dict'])
-                optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            cls = saved_models[fold]
+            optimizer = saved_opts[fold]
             train_dl, test_dl = fold_dls[fold]
             epoch_history, test_loss, test_scores = next(train(1, cls, train_dl, criterion, optimizer, test_dl))
-            torch.save({
-                'model_state_dict': cls.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-            }, saved_models[fold])
+
             # history_avg.append(epoch_history)
             loss_avg.append(test_loss)
             [scores_avg[m].append(val) for m, val in test_scores.items()]
@@ -164,6 +157,8 @@ def CV(data, labels, nfolds=4, train_epochs=3, lr=1e-6, bs=32, wd=1e-6):
         print(f"\tval_loss={loss_avg:4.3f}")
         for m, val in scores_avg.items():
             print(f"\t{m}={val:4.2f}")
+        if device == 'cuda':
+            torch.cuda.empty_cache()
 
 
 # TODO:
