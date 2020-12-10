@@ -89,6 +89,7 @@ def train_epoch(model, train_loader, criterion, optimizer, report_every=0):
         if report_every and i % report_every == report_every - 1:
             print(f"iter {i}, loss={running_loss / report_every:3.2f}")
             running_loss = 0
+
     return loss_history
 
 
@@ -125,40 +126,49 @@ def CV(data, labels, nfolds=4, train_epochs=3, lr=1e-6, bs=32, wd=1e-6):
     # TODO: добавить отрисовку и сохранение графика усредненных по всем фолдам потерь на тесте и обучении
     kf = StratifiedKFold(n_splits=nfolds, shuffle=True, random_state=7)
     criterion = nn.CrossEntropyLoss()
-
-    fold_dls = {}
+    scores_avg = [defaultdict(list) for i in range(train_epochs)]  # epoch -> {metric -> [val_1, ..., val_nfolds]}
     for fold, (train_ids, test_ids) in enumerate(kf.split(data, labels)):
+        torch.manual_seed(7)
+        cls = Classifier().to(device)
+        optimizer = AdamW(cls.parameters(), lr=lr, weight_decay=wd)
+
         train_ds = myDataset(train_ids, data, labels)
         test_ds = myDataset(test_ids, data, labels)
         train_dl = DataLoader(train_ds, batch_size=bs, shuffle=True)
         test_dl = DataLoader(test_ds, batch_size=bs)
-        fold_dls[fold] = (train_dl, test_dl)
 
-    # saved_models = {i: f'models/CV_{i}.pt' for i in range(nfolds)}
-    saved_models = {i: Classifier().to(device) for i in range(nfolds)}
-    saved_opts = {i: AdamW(saved_models[i].parameters(), lr=lr, weight_decay=wd) for i in range(nfolds)}
-    for epoch in range(train_epochs):
-        # history_avg = []
-        loss_avg = []
-        scores_avg = defaultdict(list)
-        for fold in range(nfolds):
-            cls = saved_models[fold]
-            optimizer = saved_opts[fold]
-            train_dl, test_dl = fold_dls[fold]
-            epoch_history, test_loss, test_scores = next(train(1, cls, train_dl, criterion, optimizer, test_dl))
+        epoch = 0
+        loss_history = []
+        validation = []
+        sizes = []
+        for epoch_history, test_loss, test_scores in train(train_epochs, cls, train_dl,
+                                                           criterion, optimizer, test_dl):
+            loss_history.extend(epoch_history)
+            validation.append(test_loss)
+            sizes.append(len(loss_history))
 
-            # history_avg.append(epoch_history)
-            loss_avg.append(test_loss)
-            [scores_avg[m].append(val) for m, val in test_scores.items()]
-        # history_avg = np.mean(history_avg, axis=0)
-        loss_avg = np.mean(loss_avg)
-        scores_avg = {m: np.mean(vals) for m, vals in scores_avg.items()}
-        print(f"epoch #{epoch}")
-        print(f"\tval_loss={loss_avg:4.3f}")
-        for m, val in scores_avg.items():
-            print(f"\t{m}={val:4.2f}")
+            if fold == 0:
+                plt.plot(np.arange(1, sizes[-1] + 1), loss_history)
+                plt.scatter(sizes, validation, marker='*', c='red')
+                plt.grid()
+                plt.xticks(np.arange(1, sizes[-1] + 1, 10))
+                plt.savefig(f'plots/{epoch}.png')
+                plt.show()
+
+            for m, val in test_scores.items():
+                scores_avg[epoch][m].append(val)
+            scores_avg[epoch]['val_loss'].append(test_loss)
+            epoch += 1
         if device == 'cuda':
             torch.cuda.empty_cache()
+
+    for epoch in range(train_epochs):
+        print(f"epoch #{epoch}")
+        scores = scores_avg[epoch]
+        print(f"\tval_loss={np.mean(scores['val_loss']):4.3f}")
+        del scores['val_loss']
+        for m, val in scores.items():
+            print(f"\t{m}={np.mean(val):4.2f}")
 
 
 # TODO:
@@ -168,6 +178,7 @@ def CV(data, labels, nfolds=4, train_epochs=3, lr=1e-6, bs=32, wd=1e-6):
 # стоит возвращать список с метриками после каждой эпохи
 # выключить слои?
 # регуляризация
+
 
 if __name__ == "__main__":
     data = read_data('pos_c.txt')
@@ -182,4 +193,4 @@ if __name__ == "__main__":
     p.close()
 
     for lr in [2e-6]:
-        CV(data, labels, nfolds=4, train_epochs=3, lr=lr, bs=64, wd=0)
+        CV(data[:20], labels[:20], nfolds=4, train_epochs=3, lr=lr, bs=5, wd=0)
