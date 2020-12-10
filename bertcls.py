@@ -157,7 +157,7 @@ def CV(data, labels, nfolds=4, train_epochs=3, lr=1e-6, bs=32, wd=1e-6):
                 plt.scatter(sizes, validation, marker='*', c='red')
                 plt.grid()
                 plt.xticks(np.arange(1, sizes[-1] + 50, 50))
-                plt.savefig(f'plots/{epoch}.png')
+                plt.savefig(f'plots/plot_{lr}_{bs}_{wd}_{epoch}.png')
                 plt.show()
 
             for m, val in test_scores.items():
@@ -198,4 +198,5 @@ if __name__ == "__main__":
     p.close()
 
     for lr in [2e-6]:
-        CV(data, labels, nfolds=4, train_epochs=3, lr=lr, bs=64, wd=0)
+        for wd in [1e-4]:
+            CV(data, labels, nfolds=4, train_epochs=10, lr=lr, bs=64, wd=wd)
