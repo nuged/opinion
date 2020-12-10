@@ -122,6 +122,10 @@ def eval(model, dl, criterion):
     return mean_loss / count, y_true, y_pred
 
 
+def moving_average(x, w):
+    return np.convolve(x, np.ones(w), 'valid') / w
+
+
 def CV(data, labels, nfolds=4, train_epochs=3, lr=1e-6, bs=32, wd=1e-6):
     # TODO: добавить отрисовку и сохранение графика усредненных по всем фолдам потерь на тесте и обучении
     kf = StratifiedKFold(n_splits=nfolds, shuffle=True, random_state=7)
@@ -143,6 +147,7 @@ def CV(data, labels, nfolds=4, train_epochs=3, lr=1e-6, bs=32, wd=1e-6):
         sizes = []
         for epoch_history, test_loss, test_scores in train(train_epochs, cls, train_dl,
                                                            criterion, optimizer, test_dl):
+            epoch_history = moving_average(epoch_history, 10).tolist()
             loss_history.extend(epoch_history)
             validation.append(test_loss)
             sizes.append(len(loss_history))
@@ -151,7 +156,7 @@ def CV(data, labels, nfolds=4, train_epochs=3, lr=1e-6, bs=32, wd=1e-6):
                 plt.plot(np.arange(1, sizes[-1] + 1), loss_history)
                 plt.scatter(sizes, validation, marker='*', c='red')
                 plt.grid()
-                plt.xticks(np.arange(1, sizes[-1] + 1, 10))
+                plt.xticks(np.arange(1, sizes[-1] + 50, 50))
                 plt.savefig(f'plots/{epoch}.png')
                 plt.show()
 
@@ -193,4 +198,4 @@ if __name__ == "__main__":
     p.close()
 
     for lr in [2e-6]:
-        CV(data, labels, nfolds=4, train_epochs=3, lr=lr, bs=5, wd=0)
+        CV(data, labels, nfolds=4, train_epochs=3, lr=lr, bs=64, wd=0)
