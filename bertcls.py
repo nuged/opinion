@@ -193,4 +193,4 @@ if __name__ == "__main__":
     p.close()
 
     for lr in [2e-6]:
-        CV(data[:20], labels[:20], nfolds=4, train_epochs=3, lr=lr, bs=5, wd=0)
+        CV(data, labels, nfolds=4, train_epochs=3, lr=lr, bs=5, wd=0)
