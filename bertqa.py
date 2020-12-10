@@ -184,7 +184,7 @@ if __name__ == "__main__":
     p.close()
 
     for lr in [2e-6]:
-        CV(data, labels, 13, lr, bs=64, nfolds=5)
+        CV(data, labels, 8, lr, bs=64, nfolds=5)
 
     exit(0)
 
