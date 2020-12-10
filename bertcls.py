@@ -135,7 +135,7 @@ def CV(data, labels, nfolds=4, train_epochs=3, lr=1e-6, bs=32, wd=1e-6):
         fold_dls[fold] = (train_dl, test_dl)
 
     # saved_models = {i: f'models/CV_{i}.pt' for i in range(nfolds)}
-    saved_models = {i: Classifier() for i in range(nfolds)}
+    saved_models = {i: Classifier().to(device) for i in range(nfolds)}
     saved_opts = {i: AdamW(saved_models[i].parameters(), lr=lr, weight_decay=wd) for i in range(nfolds)}
     for epoch in range(train_epochs):
         # history_avg = []
