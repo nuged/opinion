@@ -206,7 +206,7 @@ def simple_test(model_cls, optim_cls, data, labels, train_epochs=3, lr=1e-6, bs=
 
         display.clear_output(wait=True)
         plt.plot(np.arange(1, sizes[-1] + 1), loss_history)
-        plt.scatter(sizes, validation, marker='*', c='red')
+        plt.scatter(sizes, validation, marker='*', c='red', zorder=1)
         plt.grid()
         plt.xticks(np.arange(1, sizes[-1] + 50, 50))
         plt.title(f"{lr}_{bs}_{wd}_{epoch}")
@@ -216,7 +216,7 @@ def simple_test(model_cls, optim_cls, data, labels, train_epochs=3, lr=1e-6, bs=
             if val > best_scores[m]:
                 best_scores[m] = val
                 best_epoch[m] = epoch
-        if test_loss > best_scores['val_loss']:
+        if test_loss < best_scores['val_loss']:
             best_scores['val_loss'] = test_loss
             best_epoch['val_loss'] = epoch
 
