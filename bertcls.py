@@ -175,6 +175,9 @@ def CV(data, labels, nfolds=4, train_epochs=3, lr=1e-6, bs=32, wd=1e-6):
 
 
 def simple_test(model_cls, optim_cls, data, labels, train_epochs=3, lr=1e-6, bs=32, wd=1e-6):
+    import pylab as pl
+    from IPython import display
+
     ds = myDataset(range(len(data)), data, labels)
     train_ds, test_ds = train_test_split(ds, test_size=0.2, shuffle=True, random_state=7,
                                                             stratify=labels)
@@ -201,6 +204,7 @@ def simple_test(model_cls, optim_cls, data, labels, train_epochs=3, lr=1e-6, bs=
         validation.append(test_loss)
         sizes.append(len(loss_history))
 
+        display.clear_output(wait=True)
         plt.plot(np.arange(1, sizes[-1] + 1), loss_history)
         plt.scatter(sizes, validation, marker='*', c='red')
         plt.grid()
@@ -224,8 +228,9 @@ def simple_test(model_cls, optim_cls, data, labels, train_epochs=3, lr=1e-6, bs=
         #     print(f"\t{m}={val:4.2f}")
 
     plt.savefig(f'plots/plot_{lr}_{bs}_{wd}.png')
-    for m, val in best_scores.items():
-        print(f"{m} = {val:4.2f}, epoch = {best_epoch[m]}")
+    with open(f"logs/{lr}_{bs}_{wd}.log", 'w') as f:
+        for m, val in best_scores.items():
+            print(f"{m} = {val:4.2f}, epoch = {best_epoch[m]}", file=f)
 
 # TODO:
 # попробовать:
