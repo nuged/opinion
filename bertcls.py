@@ -175,10 +175,9 @@ def CV(data, labels, nfolds=4, train_epochs=3, lr=1e-6, bs=32, wd=1e-6):
 
 
 def simple_test(model_cls, optim_cls, data, labels, train_epochs=3, lr=1e-6, bs=32, wd=1e-6):
-    train_ids, test_ids = train_test_split(data, test_size=0.2, shuffle=True, random_state=7,
+    ds = myDataset(range(len(data)), data, labels)
+    train_ds, test_ds = train_test_split(ds, test_size=0.2, shuffle=True, random_state=7,
                                                             stratify=labels)
-    train_ds = myDataset(train_ids, data, labels)
-    test_ds = myDataset(test_ids, data, labels)
     train_dl = DataLoader(train_ds, batch_size=bs, shuffle=True)
     test_dl = DataLoader(test_ds, batch_size=bs)
 
