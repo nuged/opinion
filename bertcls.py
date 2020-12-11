@@ -174,7 +174,7 @@ def CV(data, labels, nfolds=4, train_epochs=3, lr=1e-6, bs=32, wd=1e-6):
             print(f"\t{m}={np.mean(val):4.2f}")
 
 
-def simple_test(model_cls, optim_cls, data, labels, train_epochs=3, lr=1e-6, bs=32, wd=1e-6):
+def simple_test(model_cls, optim_cls, data, labels, train_epochs=3, lr=1e-6, bs=32, wd=1e-6, title=""):
     import pylab as pl
     from IPython import display
 
@@ -232,8 +232,8 @@ def simple_test(model_cls, optim_cls, data, labels, train_epochs=3, lr=1e-6, bs=
         # for m, val in test_scores.items():
         #     print(f"\t{m}={val:4.2f}")
 
-    fig.savefig(f'plots/plot_{lr}_{bs}_{wd}.png')
-    with open(f"logs/{lr}_{bs}_{wd}.log", 'w') as f:
+    fig.savefig(f'plots/plot_{lr}_{bs}_{wd}_{title}.png')
+    with open(f"logs/{lr}_{bs}_{wd}_{title}.log", 'w') as f:
         for m, val in best_scores.items():
             print(f"{m} = {val:4.2f}, epoch = {best_epoch[m]}", file=f)
         best = log[best_epoch['val_loss']]
