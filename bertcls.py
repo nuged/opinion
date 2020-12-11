@@ -208,7 +208,7 @@ def simple_test(model_cls, optim_cls, data, labels, train_epochs=3, lr=1e-6, bs=
         plt.title(f"{lr}_{bs}_{wd}_{epoch}")
         plt.show()
 
-        for m, val in test_scores:
+        for m, val in test_scores.items():
             if val > best_scores[m]:
                 best_scores[m] = val
                 best_epoch[m] = epoch
