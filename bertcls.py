@@ -212,7 +212,7 @@ def simple_test(cls, optim_cls, data, labels, train_epochs=3, lr=1e-6, bs=32, wd
         plt.scatter(sizes, validation, marker='*', c='red', zorder=1)
         plt.grid()
         plt.xticks(np.arange(1, sizes[-1] + 50, 50))
-        plt.title(f"{lr}_{bs}_{wd}_{epoch}")
+        plt.title(f"{lr}_{bs}_{wd}_{title}_{epoch}")
         fig = plt.gcf()
         plt.show()
 
