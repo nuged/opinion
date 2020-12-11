@@ -4,14 +4,12 @@ from torch.utils.data import Dataset, DataLoader
 from data_preparation import read_data, remove_emoji, remove_links, remove_duplicates
 from multiprocessing import Pool
 import torch
-from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import StratifiedKFold, train_test_split
 import torch.optim as optim
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-import re
 import torch.nn.functional as F
-import pymorphy2
 from collections import defaultdict
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -34,7 +32,7 @@ class myDataset(Dataset):
 class Classifier(nn.Module):
     def __init__(self):
         super(Classifier, self).__init__()
-        self.bert = BertModel.from_pretrained("DeepPavlov/rubert-base-cased-sentence")
+        self.bert = BertModel.from_pretrained("DeepPavlov/rubert-base-cased")
         # for p in self.bert.parameters():
         #     p.requires_grad = False
 
@@ -53,7 +51,7 @@ class Classifier(nn.Module):
         return x
 
 
-tokenizer = BertTokenizer.from_pretrained("DeepPavlov/rubert-base-cased-sentence", do_lower_case=False)
+tokenizer = BertTokenizer.from_pretrained("DeepPavlov/rubert-base-cased", do_lower_case=False)
 
 
 def todevice(d):
@@ -176,6 +174,45 @@ def CV(data, labels, nfolds=4, train_epochs=3, lr=1e-6, bs=32, wd=1e-6):
             print(f"\t{m}={np.mean(val):4.2f}")
 
 
+def simple_test(model_cls, optim_cls, data, labels, train_epochs=3, lr=1e-6, bs=32, wd=1e-6):
+    train_ids, test_ids = train_test_split(data, test_size=0.2, shuffle=True, random_state=7,
+                                                            stratify=labels)
+    train_ds = myDataset(train_ids, data, labels)
+    test_ds = myDataset(test_ids, data, labels)
+    train_dl = DataLoader(train_ds, batch_size=bs, shuffle=True)
+    test_dl = DataLoader(test_ds, batch_size=bs)
+
+    torch.manual_seed(7)
+    cls = model_cls().to(device)
+    optimizer = optim_cls(cls.parameters(), lr=lr, weight_decay=wd)
+    criterion = nn.CrossEntropyLoss()
+
+    epoch = 0
+    loss_history = []
+    validation = []
+    sizes = []
+    for epoch_history, test_loss, test_scores in train(train_epochs, cls, train_dl,
+                                                       criterion, optimizer, test_dl):
+        epoch_history = moving_average(epoch_history, 10).tolist()
+        loss_history.extend(epoch_history)
+        validation.append(test_loss)
+        sizes.append(len(loss_history))
+
+        plt.plot(np.arange(1, sizes[-1] + 1), loss_history)
+        plt.scatter(sizes, validation, marker='*', c='red')
+        plt.grid()
+        plt.xticks(np.arange(1, sizes[-1] + 50, 50))
+        plt.title(f"{lr}_{bs}_{wd}_{epoch}")
+        plt.savefig(f'plots/plot_{lr}_{bs}_{wd}_{epoch}.png')
+        plt.show()
+
+        epoch += 1
+
+        print(f"epoch #{epoch}")
+        print(f"\tval_loss={test_loss:4.3f}")
+        for m, val in test_scores.items():
+            print(f"\t{m}={val:4.2f}")
+
 # TODO:
 # попробовать:
 # увеличить дропаут
@@ -199,4 +236,4 @@ if __name__ == "__main__":
 
     for lr in [2e-6]:
         for wd in [1e-4]:
-            CV(data, labels, nfolds=4, train_epochs=10, lr=lr, bs=64, wd=wd)
+            simple_test(Classifier, AdamW, data, labels, train_epochs=10, lr=lr, bs=64, wd=wd)
