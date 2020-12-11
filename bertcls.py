@@ -174,7 +174,7 @@ def CV(data, labels, nfolds=4, train_epochs=3, lr=1e-6, bs=32, wd=1e-6):
             print(f"\t{m}={np.mean(val):4.2f}")
 
 
-def simple_test(model_cls, optim_cls, data, labels, train_epochs=3, lr=1e-6, bs=32, wd=1e-6, title=""):
+def simple_test(cls, optimizer, data, labels, train_epochs=3, lr=1e-6, bs=32, wd=1e-6, title=""):
     import pylab as pl
     from IPython import display
 
@@ -185,8 +185,6 @@ def simple_test(model_cls, optim_cls, data, labels, train_epochs=3, lr=1e-6, bs=
     test_dl = DataLoader(test_ds, batch_size=bs)
 
     torch.manual_seed(7)
-    cls = model_cls().to(device)
-    optimizer = optim_cls(cls.parameters(), lr=lr, weight_decay=wd)
     criterion = nn.CrossEntropyLoss()
 
     epoch = 0
