@@ -190,6 +190,10 @@ def simple_test(model_cls, optim_cls, data, labels, train_epochs=3, lr=1e-6, bs=
     loss_history = []
     validation = []
     sizes = []
+
+    best_scores = {m: 0 for m in ['precision, recall, f1, val_loss']}
+    best_epoch = {m: 0 for m in ['precision, recall, f1, val_loss']}
+
     for epoch_history, test_loss, test_scores in train(train_epochs, cls, train_dl,
                                                        criterion, optimizer, test_dl):
         epoch_history = moving_average(epoch_history, 10).tolist()
@@ -204,15 +208,24 @@ def simple_test(model_cls, optim_cls, data, labels, train_epochs=3, lr=1e-6, bs=
         plt.title(f"{lr}_{bs}_{wd}_{epoch}")
         plt.show()
 
+        for m, val in test_scores:
+            if val > best_scores[m]:
+                best_scores[m] = val
+                best_epoch[m] = epoch
+        if test_loss > best_scores['val_loss']:
+            best_scores['val_loss'] = test_loss
+            best_epoch['val_loss'] = epoch
+
         epoch += 1
 
-        print(f"epoch #{epoch}")
-        print(f"\tval_loss={test_loss:4.3f}")
-        for m, val in test_scores.items():
-            print(f"\t{m}={val:4.2f}")
+        # print(f"epoch #{epoch}")
+        # print(f"\tval_loss={test_loss:4.3f}")
+        # for m, val in test_scores.items():
+        #     print(f"\t{m}={val:4.2f}")
 
     plt.savefig(f'plots/plot_{lr}_{bs}_{wd}.png')
-
+    for m, val in best_scores.items():
+        print(f"{m} = {val:4.2f}, epoch = {best_epoch[m]}")
 
 # TODO:
 # попробовать:
