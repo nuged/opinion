@@ -195,6 +195,7 @@ def simple_test(model_cls, optim_cls, data, labels, train_epochs=3, lr=1e-6, bs=
     sizes = []
 
     best_scores = {m: 0 for m in ['accuracy', 'precision', 'recall', 'F1', 'val_loss']}
+    best_scores['val_loss'] = 1000
     best_epoch = best_scores.copy()
 
     for epoch_history, test_loss, test_scores in train(train_epochs, cls, train_dl,
@@ -210,6 +211,7 @@ def simple_test(model_cls, optim_cls, data, labels, train_epochs=3, lr=1e-6, bs=
         plt.grid()
         plt.xticks(np.arange(1, sizes[-1] + 50, 50))
         plt.title(f"{lr}_{bs}_{wd}_{epoch}")
+        fig = plt.gcf()
         plt.show()
 
         for m, val in test_scores.items():
@@ -227,7 +229,7 @@ def simple_test(model_cls, optim_cls, data, labels, train_epochs=3, lr=1e-6, bs=
         # for m, val in test_scores.items():
         #     print(f"\t{m}={val:4.2f}")
 
-    plt.savefig(f'plots/plot_{lr}_{bs}_{wd}.png')
+    fig.savefig(f'plots/plot_{lr}_{bs}_{wd}.png')
     with open(f"logs/{lr}_{bs}_{wd}.log", 'w') as f:
         for m, val in best_scores.items():
             print(f"{m} = {val:4.2f}, epoch = {best_epoch[m]}", file=f)
