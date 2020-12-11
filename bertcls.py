@@ -195,12 +195,15 @@ def simple_test(model_cls, optim_cls, data, labels, train_epochs=3, lr=1e-6, bs=
     sizes = []
 
     best_scores = {m: 0 for m in ['accuracy', 'precision', 'recall', 'F1', 'val_loss']}
-    best_scores['val_loss'] = 1000
     best_epoch = best_scores.copy()
+    best_scores['val_loss'] = 1000
+
+    log = []
 
     for epoch_history, test_loss, test_scores in train(train_epochs, cls, train_dl,
                                                        criterion, optimizer, test_dl):
         epoch_history = moving_average(epoch_history, 10).tolist()
+        log.append(test_scores)
         loss_history.extend(epoch_history)
         validation.append(test_loss)
         sizes.append(len(loss_history))
@@ -233,6 +236,10 @@ def simple_test(model_cls, optim_cls, data, labels, train_epochs=3, lr=1e-6, bs=
     with open(f"logs/{lr}_{bs}_{wd}.log", 'w') as f:
         for m, val in best_scores.items():
             print(f"{m} = {val:4.2f}, epoch = {best_epoch[m]}", file=f)
+        best = log[best_epoch['val_loss']]
+        print(f"scores at epoch={best_epoch['val_loss']}:", file=f)
+        for m, val in best.items():
+            print(f"{m} = {val:4.2f}", file=f)
 
 # TODO:
 # попробовать:
