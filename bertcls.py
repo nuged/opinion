@@ -191,8 +191,8 @@ def simple_test(model_cls, optim_cls, data, labels, train_epochs=3, lr=1e-6, bs=
     validation = []
     sizes = []
 
-    best_scores = {m: 0 for m in ['accuracy', 'precision, recall, F1, val_loss']}
-    best_epoch = {m: 0 for m in ['accuracy', 'precision, recall, F1, val_loss']}
+    best_scores = {m: 0 for m in ['accuracy', 'precision', 'recall', 'F1', 'val_loss']}
+    best_epoch = best_scores.copy()
 
     for epoch_history, test_loss, test_scores in train(train_epochs, cls, train_dl,
                                                        criterion, optimizer, test_dl):
