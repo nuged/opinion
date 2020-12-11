@@ -202,7 +202,6 @@ def simple_test(model_cls, optim_cls, data, labels, train_epochs=3, lr=1e-6, bs=
         plt.grid()
         plt.xticks(np.arange(1, sizes[-1] + 50, 50))
         plt.title(f"{lr}_{bs}_{wd}_{epoch}")
-        plt.savefig(f'plots/plot_{lr}_{bs}_{wd}_{epoch}.png')
         plt.show()
 
         epoch += 1
@@ -211,6 +210,9 @@ def simple_test(model_cls, optim_cls, data, labels, train_epochs=3, lr=1e-6, bs=
         print(f"\tval_loss={test_loss:4.3f}")
         for m, val in test_scores.items():
             print(f"\t{m}={val:4.2f}")
+
+    plt.savefig(f'plots/plot_{lr}_{bs}_{wd}.png')
+
 
 # TODO:
 # попробовать:
