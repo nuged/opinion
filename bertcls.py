@@ -199,6 +199,9 @@ def simple_test(cls, optim_cls, data, labels, train_epochs=3, lr=1e-6, bs=32, wd
 
     log = []
 
+    F1 = []
+    acc = []
+
     for epoch_history, test_loss, test_scores in train(train_epochs, cls, train_dl,
                                                        criterion, optimizer, test_dl):
         epoch_history = moving_average(epoch_history, 10).tolist()
@@ -206,14 +209,24 @@ def simple_test(cls, optim_cls, data, labels, train_epochs=3, lr=1e-6, bs=32, wd
         loss_history.extend(epoch_history)
         validation.append(test_loss)
         sizes.append(len(loss_history))
+        F1.append(test_scores['F1'])
+        acc.append(test_scores['accuracy'])
 
         display.clear_output(wait=True)
-        plt.plot(np.arange(1, sizes[-1] + 1), loss_history)
-        plt.scatter(sizes, validation, marker='*', c='red', zorder=1)
-        plt.grid()
-        plt.xticks(np.arange(1, sizes[-1] + 50, 50))
-        plt.title(f"{lr}_{bs}_{wd}_{title}_{epoch}")
-        fig = plt.gcf()
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(17, 7))
+        ax1.plot(np.arange(1, sizes[-1] + 1), loss_history)
+        ax1.scatter(sizes, validation, marker='*', c='red', zorder=1)
+        ax1.grid()
+        ax1.set_xticks([0] + sizes)
+        ax1.set_title(f"{lr}_{bs}_{wd}_{title}_{epoch}")
+        ax2.scatter(np.arange(0, len(F1)), F1)
+        ax2.scatter(np.arange(0, len(F1)), acc)
+        ax2.plot(F1, label="F1")
+        ax2.plot(acc, label="acc")
+        ax2.grid()
+        ax2.set_yticks(np.arange(80, 102, 2))
+        ax2.legend()
+        # fig = plt.gcf()
         plt.show()
 
         for m, val in test_scores.items():
@@ -263,4 +276,4 @@ if __name__ == "__main__":
 
     for lr in [2e-6]:
         for wd in [1e-4]:
-            simple_test(Classifier, AdamW, data, labels, train_epochs=10, lr=lr, bs=64, wd=wd)
+            simple_test(Classifier(), AdamW, data[:100], labels[:100], train_epochs=10, lr=lr, bs=16, wd=wd)
