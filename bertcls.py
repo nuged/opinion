@@ -11,6 +11,7 @@ import numpy as np
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 import torch.nn.functional as F
 from collections import defaultdict
+from IPython import display
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.set_num_threads(10)
@@ -33,20 +34,28 @@ class Classifier(nn.Module):
     def __init__(self):
         super(Classifier, self).__init__()
         self.bert = BertModel.from_pretrained("DeepPavlov/rubert-base-cased")
+
         # for p in self.bert.parameters():
         #     p.requires_grad = False
 
+        # for p in self.bert.named_parameters():
+        #     if "layer" in p[0] and int(p[0].split(".")[2]) > 5:
+        #         p[1].requires_grad = True
+
         self.config = self.bert.config
         self.config.max_position_embeddings = 256
-        self.fc = nn.Linear(self.config.hidden_size, 1024)
-        self.fc2 = nn.Linear(1024, 2)
+        self.config.hidden_dropout_prob = 0.4
+        self.config.attention_probs_dropout_prob = 0.4
+        self.fc = nn.Linear(self.config.hidden_size, 4)
+        self.fc2 = nn.Linear(4, 2)
+        self.drop = nn.Dropout(0.6)
 
     def forward(self, *args, **kwargs):
         x = self.bert(*args, **kwargs).last_hidden_state[:, 0, :]
-        x = nn.ReLU()(x)
+        x = nn.LeakyReLU()(x)
         x = self.fc(x)
-        x = nn.ReLU()(x)
-        x = nn.Dropout(0.5)(x)
+        x = nn.LeakyReLU()(x)
+        x = self.drop(x)
         x = self.fc2(x)
         return x
 
@@ -124,11 +133,42 @@ def moving_average(x, w):
     return np.convolve(x, np.ones(w), 'valid') / w
 
 
+def plot_history(loss_history, validation, F1, acc, sizes, title="", clear_output=True):
+    if clear_output:
+        display.clear_output(wait=True)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(17, 7))
+    ax1.plot(np.arange(1, sizes[-1] + 1), loss_history)
+    ax1.scatter(sizes, validation, marker='*', c='red', zorder=1)
+    ax1.grid()
+    ax1.set_xticks([0] + sizes)
+    ax2.scatter(np.arange(0, len(F1)), F1)
+    ax2.scatter(np.arange(0, len(F1)), acc)
+    ax2.plot(F1, label="F1")
+    ax2.plot(acc, label="acc")
+    ax2.grid()
+    ax2.set_yticks(np.arange(min(F1), max(acc), 1))
+    ax2.legend()
+    fig.suptitle(title)
+    plt.show()
+    return fig
+
+
+metrics = ['accuracy', 'precision', 'recall', 'F1']
+
+
 def CV(data, labels, nfolds=4, train_epochs=3, lr=1e-6, bs=32, wd=1e-6):
     # TODO: добавить отрисовку и сохранение графика усредненных по всем фолдам потерь на тесте и обучении
     kf = StratifiedKFold(n_splits=nfolds, shuffle=True, random_state=7)
     criterion = nn.CrossEntropyLoss()
-    scores_avg = [defaultdict(list) for i in range(train_epochs)]  # epoch -> {metric -> [val_1, ..., val_nfolds]}
+
+    epoch_size = len(data) / nfolds * (nfolds - 1)
+    epoch_size = int(epoch_size)
+    epoch_size = (epoch_size + bs - 1) // bs
+
+    scores_avg = {m: np.zeros(train_epochs) for m in metrics}  # metric -> [m_at_ep_1, m_at_ep_2, ... ]
+    loss_history = np.zeros((train_epochs, epoch_size))
+    val_history = np.zeros(train_epochs)
+
     for fold, (train_ids, test_ids) in enumerate(kf.split(data, labels)):
         torch.manual_seed(7)
         cls = Classifier().to(device)
@@ -140,38 +180,35 @@ def CV(data, labels, nfolds=4, train_epochs=3, lr=1e-6, bs=32, wd=1e-6):
         test_dl = DataLoader(test_ds, batch_size=bs)
 
         epoch = 0
-        loss_history = []
-        validation = []
-        sizes = []
+
         for epoch_history, test_loss, test_scores in train(train_epochs, cls, train_dl,
                                                            criterion, optimizer, test_dl):
-            epoch_history = moving_average(epoch_history, 10).tolist()
-            loss_history.extend(epoch_history)
-            validation.append(test_loss)
-            sizes.append(len(loss_history))
 
-            if fold == 0:
-                plt.plot(np.arange(1, sizes[-1] + 1), loss_history)
-                plt.scatter(sizes, validation, marker='*', c='red')
-                plt.grid()
-                plt.xticks(np.arange(1, sizes[-1] + 50, 50))
-                plt.savefig(f'plots/plot_{lr}_{bs}_{wd}_{epoch}.png')
-                plt.show()
+            epoch_history = np.array(epoch_history[:epoch_size])
+            loss_history[epoch] += epoch_history
+            val_history[epoch] += test_loss
 
             for m, val in test_scores.items():
-                scores_avg[epoch][m].append(val)
-            scores_avg[epoch]['val_loss'].append(test_loss)
+                scores_avg[m][epoch] += val
             epoch += 1
+
         if device == 'cuda':
             torch.cuda.empty_cache()
 
+    for m in scores_avg:
+        scores_avg[m] /= nfolds
+    loss_history /= nfolds
+    val_history /= nfolds
+    sizes = np.cumsum([epoch_size for i in range(train_epochs)])
+
+    fig = plot_history(loss_history.reshape(-1), val_history, scores_avg['F1'], scores_avg['accuracy'],
+                       sizes, title=f"CV: lr={lr}, bs={bs}, wd={wd}", clear_output=False)
+
     for epoch in range(train_epochs):
         print(f"epoch #{epoch}")
-        scores = scores_avg[epoch]
-        print(f"\tval_loss={np.mean(scores['val_loss']):4.3f}")
-        del scores['val_loss']
-        for m, val in scores.items():
-            print(f"\t{m}={np.mean(val):4.2f}")
+        print(f"\tval_loss={val_history[epoch]:4.3f}")
+        for m, val in scores_avg.items():
+            print(f"\t{m}={val[epoch]:4.2f}")
 
 
 def simple_test(cls, optim_cls, data, labels, train_epochs=3, lr=1e-6, bs=32, wd=1e-6, title=""):
@@ -212,22 +249,7 @@ def simple_test(cls, optim_cls, data, labels, train_epochs=3, lr=1e-6, bs=32, wd
         F1.append(test_scores['F1'])
         acc.append(test_scores['accuracy'])
 
-        display.clear_output(wait=True)
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(17, 7))
-        ax1.plot(np.arange(1, sizes[-1] + 1), loss_history)
-        ax1.scatter(sizes, validation, marker='*', c='red', zorder=1)
-        ax1.grid()
-        ax1.set_xticks([0] + sizes)
-        ax1.set_title(f"{lr}_{bs}_{wd}_{title}_{epoch}")
-        ax2.scatter(np.arange(0, len(F1)), F1)
-        ax2.scatter(np.arange(0, len(F1)), acc)
-        ax2.plot(F1, label="F1")
-        ax2.plot(acc, label="acc")
-        ax2.grid()
-        ax2.set_yticks(np.arange(min(F1 + acc), max(F1 + acc), 1))
-        ax2.legend()
-        # fig = plt.gcf()
-        plt.show()
+        fig = plot_history(loss_history, validation, F1, acc, sizes, title)
 
         for m, val in test_scores.items():
             if val > best_scores[m]:
@@ -239,13 +261,12 @@ def simple_test(cls, optim_cls, data, labels, train_epochs=3, lr=1e-6, bs=32, wd
 
         epoch += 1
 
-        # print(f"epoch #{epoch}")
-        # print(f"\tval_loss={test_loss:4.3f}")
-        # for m, val in test_scores.items():
-        #     print(f"\t{m}={val:4.2f}")
+    save_results(fig, log, best_scores, best_epoch, title)
 
-    fig.savefig(f'plots/plot_{lr}_{bs}_{wd}_{title}.png')
-    with open(f"logs/{lr}_{bs}_{wd}_{title}.log", 'w') as f:
+
+def save_results(fig, log, best_scores, best_epoch, title=""):
+    fig.savefig(f'plots/{title}.png')
+    with open(f"logs/{title}.log", 'w') as f:
         for m, val in best_scores.items():
             print(f"{m} = {val:4.2f}, epoch = {best_epoch[m]}", file=f)
         best = log[best_epoch['val_loss']]
@@ -274,6 +295,4 @@ if __name__ == "__main__":
     data = p.map(str.strip, data)
     p.close()
 
-    for lr in [2e-6]:
-        for wd in [1e-4]:
-            simple_test(Classifier(), AdamW, data[:100], labels[:100], train_epochs=10, lr=lr, bs=16, wd=wd)
+    CV(data[1400:1500], labels[1400:1500], nfolds=3, train_epochs=3, lr=1e-5, bs=64, wd=1e-3)
