@@ -224,7 +224,7 @@ def simple_test(cls, optim_cls, data, labels, train_epochs=3, lr=1e-6, bs=32, wd
         ax2.plot(F1, label="F1")
         ax2.plot(acc, label="acc")
         ax2.grid()
-        # ax2.set_yticks(np.arange(80, 102, 2))
+        ax2.set_yticks(np.arange(min(F1 + acc), 105, 5))
         ax2.legend()
         # fig = plt.gcf()
         plt.show()
