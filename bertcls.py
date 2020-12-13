@@ -44,17 +44,17 @@ class Classifier(nn.Module):
 
         self.config = self.bert.config
         self.config.max_position_embeddings = 256
-        self.config.hidden_dropout_prob = 0.4
-        self.config.attention_probs_dropout_prob = 0.4
-        self.fc = nn.Linear(self.config.hidden_size, 4)
-        self.fc2 = nn.Linear(4, 2)
-        self.drop = nn.Dropout(0.6)
+        # self.config.hidden_dropout_prob = 0.4
+        # self.config.attention_probs_dropout_prob = 0.4
+        self.fc = nn.Linear(self.config.hidden_size, 16)
+        self.fc2 = nn.Linear(16, 2)
+        self.drop = nn.Dropout(0.4)
 
     def forward(self, *args, **kwargs):
         x = self.bert(*args, **kwargs).last_hidden_state[:, 0, :]
-        x = nn.LeakyReLU()(x)
+        x = nn.LeakyReLU(0.1)(x)
         x = self.fc(x)
-        x = nn.LeakyReLU()(x)
+        x = nn.LeakyReLU(0.1)(x)
         x = self.drop(x)
         x = self.fc2(x)
         return x
@@ -137,8 +137,8 @@ def plot_history(loss_history, validation, F1, acc, sizes, title="", clear_outpu
     if clear_output:
         display.clear_output(wait=True)
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(17, 7))
-    ax1.plot(np.arange(1, sizes[-1] + 1), loss_history)
-    ax1.scatter(sizes, validation, marker='*', c='red', zorder=1)
+    ax1.plot(np.arange(1, sizes[-1] + 1), loss_history, zorder=-1)
+    ax1.scatter(sizes, validation, marker='*', c='red', zorder=1, s=50)
     ax1.grid()
     ax1.set_xticks([0] + sizes)
     ax2.scatter(np.arange(0, len(F1)), F1)
@@ -163,13 +163,14 @@ def CV(data, labels, nfolds=4, train_epochs=3, lr=1e-6, bs=32, wd=1e-6):
 
     epoch_size = len(data) / nfolds * (nfolds - 1)
     epoch_size = int(epoch_size)
-    epoch_size = (epoch_size + bs - 1) // bs
+    epoch_size = (epoch_size + bs - 1) // bs - 9
 
     scores_avg = {m: np.zeros(train_epochs) for m in metrics}  # metric -> [m_at_ep_1, m_at_ep_2, ... ]
     loss_history = np.zeros((train_epochs, epoch_size))
     val_history = np.zeros(train_epochs)
 
     for fold, (train_ids, test_ids) in enumerate(kf.split(data, labels)):
+        print(f"Fold #{fold}")
         torch.manual_seed(7)
         cls = Classifier().to(device)
         optimizer = AdamW(cls.parameters(), lr=lr, weight_decay=wd)
@@ -184,7 +185,7 @@ def CV(data, labels, nfolds=4, train_epochs=3, lr=1e-6, bs=32, wd=1e-6):
         for epoch_history, test_loss, test_scores in train(train_epochs, cls, train_dl,
                                                            criterion, optimizer, test_dl):
 
-            epoch_history = np.array(epoch_history[:epoch_size])
+            epoch_history = np.array(moving_average(epoch_history, 10))[:epoch_size]
             loss_history[epoch] += epoch_history
             val_history[epoch] += test_loss
 
@@ -212,9 +213,6 @@ def CV(data, labels, nfolds=4, train_epochs=3, lr=1e-6, bs=32, wd=1e-6):
 
 
 def simple_test(cls, optim_cls, data, labels, train_epochs=3, lr=1e-6, bs=32, wd=1e-6, title=""):
-    import pylab as pl
-    from IPython import display
-
     ds = myDataset(range(len(data)), data, labels)
     train_ds, test_ds = train_test_split(ds, test_size=0.2, shuffle=True, random_state=7,
                                                             stratify=labels)
@@ -295,4 +293,4 @@ if __name__ == "__main__":
     data = p.map(str.strip, data)
     p.close()
 
-    CV(data[1400:1500], labels[1400:1500], nfolds=3, train_epochs=3, lr=1e-5, bs=64, wd=1e-3)
+    CV(data, labels, nfolds=3, train_epochs=3, lr=1e-5, bs=16, wd=1e-3)
