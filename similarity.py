@@ -26,7 +26,7 @@ def get_similar(texts):
         similarities = cosine_similarity(X[i], X[i + 1:])
         idx = []
         for j, sim in enumerate(similarities[0]):
-            if sim > 0.6:
+            if sim > 0.5:
                 idx.append(j)
         if idx:
             idxs[i] = idx
