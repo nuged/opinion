@@ -48,7 +48,7 @@ class Classifier(nn.Module):
         # self.config.attention_probs_dropout_prob = 0.4
         self.fc = nn.Linear(self.config.hidden_size, 4)
         self.fc2 = nn.Linear(4, 2)
-        self.drop = nn.Dropout(0.5)
+        self.drop = nn.Dropout(0.1)
 
     def forward(self, *args, **kwargs):
         x = self.bert(*args, **kwargs).last_hidden_state.mean(axis=1)
