@@ -16,9 +16,9 @@ import numpy as np
 #         vec = list(map(float, vec))
 #         ft[word] = np.array(vec)
 
-texts, labels = make_dataset('data/pos.txt', 'data/neg.txt')
+texts, labels = make_dataset('pos_final.txt', 'neg_final.txt')
 
-vec = TfidfVectorizer(lowercase=False, sublinear_tf=True, tokenizer=lambda x: x, ngram_range=(1, 2), preprocessor=lambda x: x)
+vec = TfidfVectorizer(lowercase=False, tokenizer=lambda x: x, ngram_range=(1, 2), preprocessor=lambda x: x)
 data = vec.fit_transform(texts)
 
 print(data.shape)

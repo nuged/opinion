@@ -20,9 +20,11 @@ def replace_numbers(text):
 
 
 def remove_links(text):
-    pattern = re.compile(r"https?:.+\b")
-    text = pattern.sub(r'', text)
-    return re.sub(r'\w+\.\w\w\w?', '', text)
+    text = re.sub(r"https?:\S+/?(\b|$)", '', text)
+    text = re.sub(r"\S+@\S+\.\w{2,3}(\b|$)", '', text)
+    text = re.sub(r"@\S+(\b|$)", '', text)
+    text = re.sub(r'\S+\.\w{2,3}/?(\b|$)', '', text)
+    return text
 
 
 def remove_emoji(text):
@@ -35,8 +37,23 @@ def remove_emoji(text):
         u"\U000024C2-\U0001F251"
         u"\u200d\u200b"
         u"\U0001F900-\U0001F9FF"
+        u"\U0001F7E0-\U0001F7EF"
                            "]+", flags = re.UNICODE)
     return pattern.sub(r'',text)
+
+
+def fix_start(text):
+    while not text[0].isalnum() and not text[0] in ['"', '«', '#']:
+        text = text[1:]
+    return text
+
+
+def fix_quotes(text):
+    return re.sub(r'""', '', text)
+
+
+def remove_sources(text):
+    return re.sub(r'\[(\d+|\?)\]', '', text)
 
 
 def tokenize(x):
@@ -78,6 +95,10 @@ def remove_duplicates(data):
 def process_chunk(text, replace_nums=True):
     text = remove_links(text)
     text = remove_emoji(text)
+    text = fix_start(text)
+    text = fix_quotes(text)
+    text = remove_sources(text)
+    text = text.strip()
     if replace_nums:
         text = replace_numbers(text)
     text = tokenize(text)

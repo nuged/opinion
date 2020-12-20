@@ -1,7 +1,7 @@
 from transformers import BertTokenizer, BertForSequenceClassification, BertModel, AdamW
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
-from data_preparation import read_data, remove_emoji, remove_links, remove_duplicates
+from data_preparation import *
 from multiprocessing import Pool
 import torch
 from sklearn.model_selection import StratifiedKFold, train_test_split
@@ -33,7 +33,7 @@ class myDataset(Dataset):
 class Classifier(nn.Module):
     def __init__(self):
         super(Classifier, self).__init__()
-        self.bert = BertModel.from_pretrained("DeepPavlov/rubert-base-cased")
+        self.bert = BertModel.from_pretrained("DeepPavlov/rubert-base-cased-sentence")
 
         # for p in self.bert.parameters():
         #     p.requires_grad = False
@@ -46,21 +46,21 @@ class Classifier(nn.Module):
         self.config.max_position_embeddings = 256
         # self.config.hidden_dropout_prob = 0.4
         # self.config.attention_probs_dropout_prob = 0.4
-        self.fc = nn.Linear(self.config.hidden_size, 16)
-        self.fc2 = nn.Linear(16, 2)
-        self.drop = nn.Dropout(0.4)
+        self.fc = nn.Linear(self.config.hidden_size, 32)
+        self.fc2 = nn.Linear(32, 2)
+        self.drop = nn.Dropout(0.2)
 
     def forward(self, *args, **kwargs):
         x = self.bert(*args, **kwargs).last_hidden_state[:, 0, :]
-        x = nn.LeakyReLU(0.1)(x)
+        x = nn.LeakyReLU()(x)
         x = self.fc(x)
-        x = nn.LeakyReLU(0.1)(x)
+        x = nn.LeakyReLU()(x)
         x = self.drop(x)
         x = self.fc2(x)
         return x
 
 
-tokenizer = BertTokenizer.from_pretrained("DeepPavlov/rubert-base-cased", do_lower_case=False)
+tokenizer = BertTokenizer.from_pretrained("DeepPavlov/rubert-base-cased-sentence", do_lower_case=False)
 
 
 def todevice(d):
@@ -282,15 +282,18 @@ def save_results(fig, log, best_scores, best_epoch, title=""):
 
 
 if __name__ == "__main__":
-    data = read_data('pos_c.txt')
+    data = read_data('pos_final.txt')
     labels = [1] * len(data)
-    data.extend(read_data('neg_c.txt'))
+    data.extend(read_data('neg_final.txt'))
     labels += [0] * (len(data) - len(labels))
 
-    p = Pool(processes=4)
-    data = p.map(remove_links, data)
-    data = p.map(remove_emoji, data)
-    data = p.map(str.strip, data)
-    p.close()
+    # p = Pool(processes=4)
+    # data = p.map(remove_links, data)
+    # data = p.map(remove_emoji, data)
+    # data = p.map(fix_start, data)
+    # data = p.map(fix_quotes, data)
+    # data = p.map(remove_sources, data)
+    # data = p.map(str.strip, data)
+    # p.close()
 
-    CV(data, labels, nfolds=3, train_epochs=3, lr=1e-5, bs=16, wd=1e-3)
+    CV(data, labels, nfolds=3, train_epochs=3, lr=1e-4, bs=64, wd=1e-3)
