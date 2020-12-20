@@ -46,8 +46,8 @@ class Classifier(nn.Module):
         self.config.max_position_embeddings = 256
         # self.config.hidden_dropout_prob = 0.4
         # self.config.attention_probs_dropout_prob = 0.4
-        self.fc = nn.Linear(self.config.hidden_size, 4)
-        self.fc2 = nn.Linear(4, 2)
+        self.fc = nn.Linear(self.config.hidden_size, 16)
+        self.fc2 = nn.Linear(16, 2)
         self.drop = nn.Dropout(0.1)
 
     def forward(self, *args, **kwargs):
