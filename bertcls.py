@@ -46,17 +46,17 @@ class Classifier(nn.Module):
         self.config.max_position_embeddings = 256
         # self.config.hidden_dropout_prob = 0.4
         # self.config.attention_probs_dropout_prob = 0.4
-        self.fc = nn.Linear(self.config.hidden_size, 256)
-        self.fc2 = nn.Linear(256, 2)
-        self.drop = nn.Dropout(0.1)
+        self.fc = nn.Linear(self.config.hidden_size, 1024)
+        self.fc2 = nn.Linear(1024, 2)
+        # self.drop = nn.Dropout(0.1)
 
     def forward(self, *args, **kwargs):
         x = self.bert(*args, **kwargs).last_hidden_state.mean(axis=1)
-        x = nn.GELU()(x)
-        x = self.drop(x)
+        x = nn.LeakyReLU(0.1)(x)
+        # x = self.drop(x)
         x = self.fc(x)
-        x = nn.GELU()(x)
-        x = self.drop(x)
+        x = nn.LeakyReLU(0.1)(x)
+        # x = self.drop(x)
         x = self.fc2(x)
         return x
 
@@ -299,5 +299,5 @@ if __name__ == "__main__":
 
     cls = Classifier().to(device)
 
-    simple_test(cls, AdamW, data, labels, 10, lr=1e-4, bs=64, wd=1e-3, title='yeboii')
+    simple_test(cls, AdamW, data, labels, 7, lr=1e-5, bs=64, wd=0, title='yeboii')
     # CV(data, labels, nfolds=3, train_epochs=3, lr=1e-4, bs=64, wd=1e-3)
