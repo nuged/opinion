@@ -90,7 +90,7 @@ class MyDataset(Dataset):
 
 
 if __name__ == "__main__":
-    data = pd.read_excel("data/Coronavirus.xlsx", )[['Ссылка', 'Высказывание', 'Ключевые слова', 'Счёт']].dropna()
+    data = pd.read_excel("data/Coronavirus.xlsx", engine='openpyxl')[['Ссылка', 'Высказывание', 'Ключевые слова', 'Счёт']].dropna()
     random.seed(5)
     ds = MyDataset(data, AutoTokenizer.from_pretrained("DeepPavlov/rubert-base-cased", do_lower_case=False))
     counter = 0
@@ -98,9 +98,9 @@ if __name__ == "__main__":
         c, q, l, k = kw
         if len(l) >= 1:
             counter += 1
-            print(c)
-            print(k)
-            print()
+            tok = AutoTokenizer.from_pretrained("DeepPavlov/rubert-base-cased", do_lower_case=False).tokenize(c)
+            for s, e in l:
+                print(tok[s: e+1])
 
 print(counter)
 

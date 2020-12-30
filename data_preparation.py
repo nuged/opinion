@@ -63,6 +63,8 @@ def tokenize(x):
 def lemmatize(w):
     return morph.parse(w)[0].normal_form
 
+def lemm_sent(s):
+    return list(map(lemmatize, s))
 
 def read_data(filename):
     with open(filename) as f:
@@ -91,6 +93,21 @@ def remove_duplicates(data):
             result.append(d)
     return result
 
+
+def remove_vkid(text):
+    text = re.sub(r'\[\w+\|.+\]', '[USER]', text)
+    return text
+
+
+def fix_sentences(text):
+    text = re.sub(r'(?<![А-ЯЁ])([.!?])([А-ЯЁ])', r'\g<1> \g<2>', text)
+    text = re.sub(r'\.{2,}', r'...', text)
+    text = re.sub(r'\.\.\.(\w)', r'... \g<1>', text)
+    text = re.sub(r',([а-яёА-ЯЁ])', r', \g<1>', text)
+    return text
+
+def fix_newlines(text):
+    return re.sub(r'\n', ' ', text)
 
 def process_chunk(text, replace_nums=True):
     text = remove_links(text)
