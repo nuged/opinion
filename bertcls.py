@@ -308,5 +308,6 @@ if __name__ == "__main__":
     train_dl = DataLoader(ds, batch_size=64, shuffle=True)
     loss = nn.CrossEntropyLoss()
     opt = AdamW(cls.parameters(), lr=1e-5, weight_decay=0)
-    train(7, cls, train_dl, loss, opt, report_every=10)
+    for _ in train(7, cls, train_dl, loss, opt, report_every=10):
+        pass
     torch.save(cls.state_dict(), 'models/classifier.pt')
