@@ -102,7 +102,9 @@ def train_epoch(model, train_loader, criterion, optimizer, report_every=0):
 
 
 def train(nepochs, model, train_loader, criterion, optimizer, test_loader=None, report_every=0):
+    print('started training')
     for epoch in range(nepochs):
+        print(f'epoch #{epoch}')
         epoch_history = train_epoch(model, train_loader, criterion, optimizer, report_every)
         if test_loader is not None:
             test_loss, y_true, y_pred = eval(model, test_loader, criterion)
@@ -288,6 +290,7 @@ if __name__ == "__main__":
     data.extend(read_data('neg_final.txt'))
     labels += [0] * (len(data) - len(labels))
 
+    print('loaded', len(data))
     # p = Pool(processes=4)
     # data = p.map(remove_links, data)
     # data = p.map(remove_emoji, data)
@@ -299,5 +302,11 @@ if __name__ == "__main__":
 
     cls = Classifier().to(device)
 
-    simple_test(cls, AdamW, data, labels, 7, lr=1e-5, bs=64, wd=0, title='yeboii')
-    # CV(data, labels, nfolds=3, train_epochs=3, lr=1e-4, bs=64, wd=1e-3)
+    # simple_test(cls, AdamW, data, labels, 7, lr=1e-5, bs=64, wd=0, title='yeboii')
+    torch.manual_seed(5)
+    ds = myDataset(range(len(data)), data, labels)
+    train_dl = DataLoader(ds, batch_size=64, shuffle=True)
+    loss = nn.CrossEntropyLoss()
+    opt = AdamW(cls.parameters(), lr=1e-5, weight_decay=0)
+    train(7, cls, train_dl, loss, opt, report_every=10)
+    torch.save(cls.state_dict(), 'models/classifier.pt')
