@@ -16,7 +16,7 @@ dl = DataLoader(ds, batch_size=64, shuffle=False)
 scores = {}
 for texts, _ in dl:
     with torch.no_grad():
-        output = apply_model(model, texts)[:, 1].detach().numpy()
+        output = apply_model(model, texts)[:, 1].detach().cpu().numpy()
         answers = output > 0.5
     for i, t in enumerate(texts):
         scores[t] = (output[i], answers[i])
