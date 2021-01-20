@@ -11,7 +11,7 @@ model.to(device)
 model.load_state_dict(torch.load('models/classifier.pt'))
 model.eval()
 
-for week in [1, 2, 3]:
+for week in [2, 3]:
     print(f'week={week}')
     data = open(f'mydata/ria_comments_{week}.txt').read().split('\n')[:-1]
     ds = myDataset(range(len(data)), data, [1]*len(data))
