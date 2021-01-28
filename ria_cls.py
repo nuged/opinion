@@ -8,7 +8,7 @@ from collections import defaultdict
 import numpy as np
 
 tokenizer = BertTokenizer.from_pretrained("DeepPavlov/rubert-base-cased-sentence", do_lower_case=False)
-tokenizer.add_special_tokens({'additional_special_tokens': ['[USER]']})
+# tokenizer.add_special_tokens({'additional_special_tokens': ['[USER]']})
 model = Classifier()
 model.to(device)
 model.load_state_dict(torch.load('models/classifier.pt'))
