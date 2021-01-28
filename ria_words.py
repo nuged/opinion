@@ -23,7 +23,7 @@ with open('opinion/rusentilex_2017.txt') as f:
         elif 'opinion' in data:
             opinion.update(words)
 
-for week in [1, 2, 3]:
+for week in [2, 3]:
     texts = []
     scores = []
     with open(f'mydata/ria_scores_{week}.tsv') as f:
