@@ -22,9 +22,9 @@ user_agg = defaultdict(dict)
 for week in [1]:
     print(f'week={week}')
     data = open(f'mydata/65_sources/sentences.tsv').read().split('\n')[:-1]
-    data2users = dict([tuple(d.split('\t')) for d in data])
+    data2users = dict([tuple(d.split('\t'))[::-1] for d in data])
 
-    data = [d.split('\t')[0] for d in data]
+    data = [d.split('\t')[1] for d in data]
 
     ds = myDataset(range(len(data)), data, [1]*len(data))
     dl = DataLoader(ds, batch_size=64, shuffle=False)
