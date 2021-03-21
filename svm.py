@@ -60,6 +60,6 @@ cls.fit(data, labels)
 print(data.shape)
 features = vec.get_feature_names()
 coef = cls.coef_.toarray()[0]
-with open("topwords.txt", "w") as f:
+with open("mydata/topwords.txt", "w") as f:
     for idx in np.abs(coef).argsort()[-1::-1]:
         print(f"{features[idx]}\t{coef[idx]:3.2f}", file=f)

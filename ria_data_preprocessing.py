@@ -1,3 +1,7 @@
+"""
+Preprocesses comments and writes sentences to a file.
+"""
+
 import pandas as pd
 from data_preparation import *
 from nltk.tokenize import sent_tokenize, TweetTokenizer

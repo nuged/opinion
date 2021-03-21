@@ -1,3 +1,8 @@
+"""
+Separates comments to opinion and feeling sets lexically
+"""
+
+
 from kwords import process_line
 from multiprocessing import Pool
 

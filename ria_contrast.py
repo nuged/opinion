@@ -1,3 +1,7 @@
+"""
+Calculates contrast between comments from different weeks
+"""
+
 from contrast import weirdness, write_results
 from nltk.tokenize import word_tokenize
 from collections import defaultdict

@@ -8,10 +8,10 @@ import pymorphy2
 import re
 
 
-stopwords = stopwords.words("russian")
+stopwords = stopwords.words("russian") + ['это', "всё", "весь", "ещё"]
 morph = pymorphy2.MorphAnalyzer()
 punctuation += "«»—–"
-punctuation = list(punctuation) + ["``", "''"]
+punctuation = list(punctuation) + ["``", "''", '...']
 
 
 def replace_numbers(text):

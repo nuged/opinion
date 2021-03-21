@@ -33,7 +33,7 @@ def process_line(line, keywords):
 
 if __name__ == '__main__':
     keywords = set()
-    with open("rubrs.json") as f:
+    with open("data/rubrs.json") as f:
         for line in f:
             line = re.sub(r'\\', '', line)
             entries = re.findall(r'"textentrystr":\s"(.+?)",\s"confirmid"', line)
@@ -67,8 +67,8 @@ if __name__ == '__main__':
     p = Pool(10)
     result = p.starmap(process_line, data)
     p.close()
-    f = open('mydata/kwords_manual.tsv', 'w')
-    g = open('mydata/kwords_auto.tsv', 'w')
+    f = open('mydata/kwords/kwords_manual.tsv', 'w')
+    g = open('mydata/kwords/kwords_auto.tsv', 'w')
     failed = 0
     for i, r in enumerate(result):
         if r[1]:

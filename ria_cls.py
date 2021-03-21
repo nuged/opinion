@@ -1,4 +1,7 @@
-# TODO: bertcls -> train and save model, load it here; try RuBERT and conversational
+"""
+Opinion classification. Creates a new file with opinion scores for each sentence
+"""
+
 from bertcls import Classifier, myDataset, device, apply_model
 from torch.utils.data import DataLoader
 import torch

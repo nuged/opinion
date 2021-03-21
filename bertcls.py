@@ -285,9 +285,9 @@ def save_results(fig, log, best_scores, best_epoch, title=""):
 
 
 if __name__ == "__main__":
-    data = read_data('pos_final.txt')
+    data = read_data('mydata/opinion mining/pos_final.txt')
     labels = [1] * len(data)
-    data.extend(read_data('neg_final.txt'))
+    data.extend(read_data('mydata/opinion mining/neg_final.txt'))
     labels += [0] * (len(data) - len(labels))
 
     print('loaded', len(data))

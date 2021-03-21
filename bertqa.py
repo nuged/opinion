@@ -172,9 +172,9 @@ def CV(data, labels, n_epochs, lr, bs=32, nfolds=4):
 morph = pymorphy2.MorphAnalyzer()
 
 if __name__ == "__main__":
-    data = read_data('pos_c.txt')
+    data = read_data('mydata/opinion mining/trash/pos_c.txt')
     labels = [1] * len(data)
-    data.extend(read_data('neg_c.txt'))
+    data.extend(read_data('mydata/opinion mining/trash/neg_c.txt'))
     labels += [0] * (len(data) - len(labels))
 
     p = Pool(processes=4)
