@@ -66,7 +66,8 @@ tokenizer = BertTokenizer.from_pretrained("DeepPavlov/rubert-base-cased-sentence
 
 def todevice(d):
     for k in d:
-        d[k] = d[k].to(device)
+        # print(k, d[k].size())
+        d[k] = d[k][:, :512].to(device)
 
 
 def apply_model(model, texts):
