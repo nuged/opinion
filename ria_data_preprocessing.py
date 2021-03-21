@@ -29,13 +29,13 @@ def preprocess_data(path):
             users.append(users_na[i])
 
     p = Pool(10)
-    data = p.map(norm, data)
-    data = p.map(fix_newlines, data)
-    data = p.map(remove_links, data)
+    data = p.map(norm, data)  # unicode normalization
+    data = p.map(fix_newlines, data)  # replace newlines inside comments with a space
+    data = p.map(remove_links, data)  # remove urls, emails and mentions
     data = p.map(remove_emoji, data)
-    data = p.map(remove_vkid, data)
-    data = p.map(fix_sentences, data)
-    data = p.map(str.strip, data)
+    data = p.map(remove_vkid, data)  # replace user info with a special token in replies
+    data = p.map(fix_sentences, data)  # fix spacing between sentences and near commas
+    data = p.map(str.strip, data)  # remove extra spaces
     data = p.map(sent_tok, data)
 
     sents2users = {s: users[i] for i, d in enumerate(data) for s in d if s and s != 'Deleted comment'}
@@ -54,9 +54,8 @@ def preprocess_data(path):
 
 
 if __name__ == '__main__':
-    for week in [1, 2, 3]:
-        data = preprocess_data(f'data/ria/ria_comments_{week}.csv')
-        f = open(f'mydata/ria_comments_{week}.tsv', 'w')
-        for d, u in data:
-            print(f'{d}\t{u}', file=f)
-        f.close()
+    data = preprocess_data(f'data/ria/65_sources_comments.csv')
+    f = open(f'mydata/65_sources/sentences.tsv', 'w')
+    for sentence, user in data:
+        print(f'{user}\t{sentence}', file=f)
+    f.close()

@@ -11,7 +11,7 @@ from collections import defaultdict
 import numpy as np
 
 tokenizer = BertTokenizer.from_pretrained("DeepPavlov/rubert-base-cased-sentence", do_lower_case=False)
-# tokenizer.add_special_tokens({'additional_special_tokens': ['[USER]']})
+tokenizer.add_special_tokens({'additional_special_tokens': ['[USER]']})
 model = Classifier()
 model.to(device)
 model.load_state_dict(torch.load('models/classifier.pt'))
@@ -19,9 +19,9 @@ model.eval()
 
 user_agg = defaultdict(dict)
 
-for week in [1, 2, 3]:
+for week in [1]:
     print(f'week={week}')
-    data = open(f'mydata/ria_comments_{week}.tsv').read().split('\n')[:-1]
+    data = open(f'mydata/65_sources/sentences.tsv').read().split('\n')[:-1]
     data2users = dict([tuple(d.split('\t')) for d in data])
 
     data = [d.split('\t')[0] for d in data]
@@ -43,8 +43,8 @@ for week in [1, 2, 3]:
             # loss = criterion(output, labels.to(device).view(-1))
             # pred = output.argmax(axis=1).detach().tolist()
 
-f = open(f'mydata/ria_scores_by_user.tsv', 'w')
+f = open(f'mydata/65_sources/opinion_scores.tsv', 'w')
 for user, data in user_agg.items():
     for text, (score, answer) in sorted(data.items(), key=lambda x: x[1][0], reverse=True):
-        print(f'{user}\t{text}\t{score}\t{answer}', file=f)
+        print(f'{user}\t{text}\t{score}', file=f)
 f.close()

@@ -23,7 +23,7 @@ def remove_links(text):
     text = re.sub(r"https?:\S+/?(\b|$)", '', text)
     text = re.sub(r"\S+@\S+\.\w{2,3}(\b|$)", '', text)
     text = re.sub(r"@\S+(\b|$)", '', text)
-    text = re.sub(r'\S+\.\w{2,3}/?(\b|$)', '', text)
+    text = re.sub(r'\S+\.\w{2,3}/?\S*(\b|$)', '', text)
     return text
 
 
