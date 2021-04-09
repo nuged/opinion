@@ -1,5 +1,5 @@
 """
-Clustering with lexical and syntactical features
+Sentiment clustering with lexical and syntactical features
 """
 
 import pandas as pd
@@ -7,79 +7,69 @@ from ria_themes import process_line, themes
 import numpy as np
 from data_preparation import lemmatize, tokenize, stopwords, punctuation
 from sklearn.metrics import f1_score, precision_score, recall_score
-
-df = pd.read_csv('mydata/RIA/topics/scored data/ria_vaccine_labelled.tsv', index_col=False, quoting=3, sep='\t')
-pd.set_option("display.max_rows", None, "display.max_columns", None)
-labels = {'-': 0, '=': 1, '+': 2}
-labelled = list(map(lambda x: labels[x[0]], df['usr_id'].values))
-df['Topic'] = labelled
+from ria_lexical_sentiment import sentiments
 
 
-tmp = np.array(df['text'].map(lambda x: process_line(x, themes['vaccine'])[2:]).tolist())
-df['start'] = tmp[:, 0]
-df['end'] = tmp[:, 1]
-
-absence = {"нет", "не", "ни", "без"}
-neg_ = set()
-pos_ = set()
-with open('opinion/rusentilex_2017.txt') as f:
-    for line in f:
-        if line.startswith('!') or ', ' not in line:
-            continue
-        _, pos, lemma, sent, *_ = line.split(', ')
-        if sent == 'positive':
-            pos_.add(lemma)
-        elif sent == 'negative':
-            neg_.add(lemma)
+def get_sents_positions(words):
+    sent_words = {}
+    for (word, start, end) in words:
+        negated = word.startswith(('не ', 'ни ', 'нет ', 'нету ')) and word not in sentiments
+        if negated:
+            sent = sentiments[word.split(' ', 1)[1]]
+        else:
+            sent = sentiments[word]
+        sent_words[word] = [start, end, sent]
+        if negated:
+            sent_words[word][-1] *= -1
+    return sent_words
 
 
-def is_close(row):
-    text = row.text[: row.start]
-    words = tokenize(text)[-10:]
-    words = list(map(lemmatize, words))
-    if not words:
-        return 0
-    if words[-1] in absence:
-        words = words[: -1]
-    # words = list(filter(lambda x: x not in punctuation and x not in stopwords, words))
-    if not words:
-        return 0
-    previous = words[-1]
-    negated = not len(words) < 2 and words[-2] in ['не', "нет", "ни"]
-    if previous in pos_:
-        score = 1
-    elif previous in neg_:
-        score = -1
-    else:
-        score = 0
-    score = -score if negated else score
-    score = -score if row.absence else score
-    return score
+def classify(row):
+    if row.sent_words == '[]':
+        if row.p_opinion <= 0.2:
+            return 0
+        else:
+            return 999
+    sent_words = get_sents_positions(eval(row.sent_words))
+    keywords = eval(row.bounds)
+    absences = eval(row.absence)
+    results = []
+    for i, (kw_start, kw_end) in enumerate(keywords):
+        for word, (start, end, sent) in sent_words.items():
+            if kw_start >= end:
+                words_between = tokenize(row.text[end: kw_start])
+            elif start >= kw_end:
+                words_between = tokenize(row.text[kw_end: start])
+            else:
+                continue
+            if any(x in words_between for x in [',', ';', '...']):
+                continue
+            words_between = map(lemmatize, words_between)
+            words_between = list(filter(lambda x: x not in stopwords and x not in punctuation, words_between))
+            if words_between:
+                continue
+            if absences[i]:
+                results.append(-sent)
+            else:
+                results.append(sent)
+    if results:
+        score = sum(results)
+        if score > 0:
+            return 1
+        if score < 0:
+            return -1
+        # return 0
+    return 999
 
 
-for t in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
-    neutral = df[(df.p_opinion < t) & (df.sent_words == '[]')]
-    y_pred = np.zeros(df.shape[0])
-    y_pred[neutral.index] = 1
-    y_true = (df.Topic == 1)
-    f1 = f1_score(y_true, y_pred)
-    pr = precision_score(y_true, y_pred)
-    rec = recall_score(y_true, y_pred)
-    print(f'{t}:\tf1={f1:4.3f}, pr={pr:4.3f}, rec={rec:4.3f}, size={neutral.shape[0]}')
-
-
-negative = df[df.apply(is_close, axis=1) == -1]
-positive = df[df.apply(is_close, axis=1) == 1]
-threshold = 0.2
-neutral = df[(df.p_opinion < threshold) & (df.sent_words == '[]')]
-
-neutral.drop(columns=['start', 'end']).to_csv(f'mydata/neutral.tsv', sep='\t', header=True, index=False, quoting=3)
-positive.drop(columns=['start', 'end']).to_csv(f'mydata/positive.tsv', sep='\t', header=True, index=False, quoting=3)
-negative.drop(columns=['start', 'end']).to_csv(f'mydata/negative.tsv', sep='\t', header=True, index=False, quoting=3)
-
-df['test'] = -1
-df['test'][negative.index] = 0
-df['test'][neutral.index] = 1
-df['test'][positive.index] = 2
-
-df.drop(columns=['start', 'end']).to_csv('mydata/clustering_test.tsv', sep='\t', header=True, index=False, quoting=3)
+if __name__ == '__main__':
+    for theme, theme_words in themes.items():
+        print(f'processing {theme}')
+        df = pd.read_csv(f'mydata/merged/{theme}_sentiment.tsv', index_col=False, quoting=3, sep='\t')
+        df['lex_sentiment'] = df.apply(classify, axis=1)
+        for sentiment, label in [('pos', 1), ('neg', -1), ('neut', 0)]:
+            tmp = df[df.lex_sentiment == label]
+            print(f'{sentiment}:\t{tmp.shape[0]} records')
+            tmp.to_csv(f'mydata/merged/lexicon/{theme}_{sentiment}.tsv', sep='\t', header=True, index=False, quoting=3)
+        print()
+        df.to_csv(f'mydata/merged/lexicon/{theme}_total.tsv', sep='\t', header=True, index=False, quoting=3)

@@ -18,15 +18,15 @@ def sent_tok(text):
 
 
 def preprocess_data(path):
-    comments = pd.read_csv(path, index_col=None)
-    users_na = comments.commenter_id.tolist()
-    comments = comments.text.tolist()
-    data = []
-    users = []
-    for i, comm in enumerate(comments):
-        if isinstance(comm, str) and not isnan(users_na[i]):
-            data.append(comm)
-            users.append(users_na[i])
+    comments = pd.read_csv(path, index_col=None, sep='\t', quoting=3, header=None)
+    # users_na = comments.commenter_id.tolist()
+    data = comments[0].tolist()
+    # data = []
+    # users = []
+    # for i, comm in enumerate(comments):
+    #     if isinstance(comm, str) and not isnan(users_na[i]):
+    #         data.append(comm)
+    #         users.append(users_na[i])
 
     p = Pool(10)
     data = p.map(norm, data)  # unicode normalization
@@ -37,11 +37,11 @@ def preprocess_data(path):
     data = p.map(fix_sentences, data)  # fix spacing between sentences and near commas
     data = p.map(str.strip, data)  # remove extra spaces
     data = p.map(sent_tok, data)
-
-    sents2users = {s: users[i] for i, d in enumerate(data) for s in d if s and s != 'Deleted comment'}
-    data = sents2users.keys()
+    data = [sent for item in data for sent in item]
+    # sents2users = {s: users[i] for i, d in enumerate(data) for s in d if s and s != 'Deleted comment'}
+    # data = sents2users.keys()
     tokenized_data = p.map(tokenize, data)
-    tokenized_data = p.map(lemm_sent, tokenized_data)
+    tokenized_data = p.map(lemm_sent, tokenized_data, chunksize=1000)
     tokenized_data = [list(filter(lambda x: x not in punctuation and x not in stopwords, tokens))
                       for tokens in tokenized_data]
     p.close()
@@ -50,12 +50,13 @@ def preprocess_data(path):
     print(len(data))
     data = set(data)
     print(len(data))
-    return [(s, sents2users[s]) for s in data]
+    # return [(s, sents2users[s]) for s in data]
+    return data
 
 
 if __name__ == '__main__':
-    data = preprocess_data(f'data/ria/65_sources_comments.csv')
-    f = open(f'mydata/65_sources/sentences.tsv', 'w')
-    for sentence, user in data:
-        print(f'{user}\t{sentence}', file=f)
+    data = preprocess_data(f'mydata/citations/citations.txt')
+    f = open(f'mydata/citations/citations.tsv', 'w')
+    for sentence in data:
+        print(f'{sentence}', file=f)
     f.close()

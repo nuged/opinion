@@ -49,6 +49,8 @@ def fix_start(text):
 
 
 def fix_quotes(text):
+    text = re.sub(r"''", '"', text)
+    text = re.sub(r"``", '"', text)
     return re.sub(r'""', '', text)
 
 
