@@ -21,7 +21,7 @@ model.eval()
 
 for week in [1]:
     print(f'week={week}')
-    data = open(f'mydata/citations/citations.tsv').read().split('\n')[:1000]
+    data = open(f'mydata/citations/citations.tsv').read().split('\n')[:-1]
     # data2users = dict([tuple(d.split('\t'))[::-1] for d in data])
 
     # data = [d.split('\t')[1] for d in data]
