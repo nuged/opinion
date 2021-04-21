@@ -110,9 +110,9 @@ def train(nepochs, model, train_loader, criterion, optimizer, test_loader=None, 
         print(f'epoch #{epoch}')
         epoch_history = train_epoch(model, train_loader, criterion, optimizer, report_every, scheduler)
         if test_loader is not None:
-            test_loss, y_true, y_pred = eval(model, test_loader, criterion)
+            test_loss, y_true, y_pred, probs = eval(model, test_loader, criterion)
             scores = get_scores(y_true, y_pred)
-            yield epoch_history, test_loss, scores
+            yield epoch_history, test_loss, scores, probs
         else:
             yield epoch_history
 
@@ -123,16 +123,18 @@ def eval(model, dl, criterion):
     count = 0
     y_pred = []
     y_true = []
+    probs = []
     for texts, labels in dl:
         with torch.no_grad():
             output = apply_model(model, texts)
+            probs.extend(nn.Softmax(dim=1)(output)[:, 1].detach().tolist())
             loss = criterion(output, labels.to(device).view(-1))
             mean_loss += loss.item()
             count += 1
             pred = output.argmax(axis=1).detach().tolist()
             y_pred.extend(pred)
             y_true.extend((labels.tolist()))
-    return mean_loss / count, y_true, y_pred
+    return mean_loss / count, y_true, y_pred, probs
 
 
 def moving_average(x, w):
