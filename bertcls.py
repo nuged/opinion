@@ -83,7 +83,7 @@ def get_scores(y_true, y_pred):
     return result
 
 
-def train_epoch(model, train_loader, criterion, optimizer, report_every=0):
+def train_epoch(model, train_loader, criterion, optimizer, report_every=0, scheduler=None):
     model.train()
     loss_history = []
     running_loss = 0
@@ -93,6 +93,8 @@ def train_epoch(model, train_loader, criterion, optimizer, report_every=0):
         loss = criterion(output, labels.to(device).view(-1))
         loss.backward()
         optimizer.step()
+        if (scheduler):
+            scheduler.step()
         loss_history.append(loss.item())
         running_loss += loss.item()
         if report_every and i % report_every == report_every - 1:
@@ -102,11 +104,11 @@ def train_epoch(model, train_loader, criterion, optimizer, report_every=0):
     return loss_history
 
 
-def train(nepochs, model, train_loader, criterion, optimizer, test_loader=None, report_every=0):
+def train(nepochs, model, train_loader, criterion, optimizer, test_loader=None, report_every=0, scheduler=None):
     print('started training')
     for epoch in range(nepochs):
         print(f'epoch #{epoch}')
-        epoch_history = train_epoch(model, train_loader, criterion, optimizer, report_every)
+        epoch_history = train_epoch(model, train_loader, criterion, optimizer, report_every, scheduler)
         if test_loader is not None:
             test_loss, y_true, y_pred = eval(model, test_loader, criterion)
             scores = get_scores(y_true, y_pred)

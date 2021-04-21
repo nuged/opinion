@@ -132,13 +132,13 @@ def score_line(line):
 
 if __name__ == '__main__':
     for theme in themes:
-        df = pd.read_csv(f'mydata/merged/{theme}.tsv', index_col=None, sep='\t', quoting=3)
+        df = pd.read_csv(f'mydata/citations/{theme}.tsv', index_col=None, sep='\t', quoting=3)
 
-        g = df.groupby('usr_id')
+        # g = df.groupby('usr_id')
 
         print(theme, df.shape[0])
         with Pool(10) as p:
-            scores = p.map(score_line, df[['text', 'bounds', 'absence']].values, chunksize=100)
+            scores = p.map(score_line, df[['text', 'bounds', 'absence']].values, chunksize=1000)
         scores = list(zip(*scores))
         # print(scores)
         ncols = df.shape[1]
@@ -146,4 +146,4 @@ if __name__ == '__main__':
 
         # df.drop(columns=['bounds'], inplace=True)
 
-        df.to_csv(f'mydata/merged/{theme}_sentiment.tsv', sep='\t', header=True, index=False, quoting=3)
+        df.to_csv(f'mydata/citations/{theme}_sentiment.tsv', sep='\t', header=True, index=False, quoting=3)

@@ -70,12 +70,12 @@ def process_line(line, keywords):
 
 if __name__ == '__main__':
     from data_preparation import fix_quotes
-    df = pd.read_csv('mydata/merged/opinion_scores.tsv', index_col=None, header=None, sep='\t', quoting=3)
-    df[1] = df[1].apply(fix_quotes)
+    df = pd.read_csv('mydata/citations/opinion_scores.tsv', index_col=None, header=None, sep='\t', quoting=3)
+    df[0] = df[0].apply(fix_quotes)
     print(df.shape)
     for theme, words in themes.items():
         p = Pool(10)
-        m = p.starmap(process_line, zip(df[1].values, [words] * df.shape[0]), chunksize=10000)
+        m = p.starmap(process_line, zip(df[0].values, [words] * df.shape[0]), chunksize=10000)
         p.close()
         idx = [bool(item) for item in m]
         found = df[idx]
@@ -86,6 +86,6 @@ if __name__ == '__main__':
         found['absence'] = absence
         found['bounds'] = bounds
 
-        found.rename(columns={0: "usr_id", 1: "text", 2: "p_opinion"}, inplace=True)
+        found.rename(columns={0: "text", 1: "p_opinion"}, inplace=True)
         print(theme, found.shape)
-        found.to_csv(f'mydata/merged/{theme}.tsv', sep='\t', index=False, quoting=3)
+        found.to_csv(f'mydata/citations/{theme}.tsv', sep='\t', index=False, quoting=3)

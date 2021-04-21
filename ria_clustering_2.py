@@ -65,11 +65,11 @@ def classify(row):
 if __name__ == '__main__':
     for theme, theme_words in themes.items():
         print(f'processing {theme}')
-        df = pd.read_csv(f'mydata/merged/{theme}_sentiment.tsv', index_col=False, quoting=3, sep='\t')
+        df = pd.read_csv(f'mydata/citations/{theme}_sentiment.tsv', index_col=False, quoting=3, sep='\t')
         df['lex_sentiment'] = df.apply(classify, axis=1)
         for sentiment, label in [('pos', 1), ('neg', -1), ('neut', 0)]:
             tmp = df[df.lex_sentiment == label]
             print(f'{sentiment}:\t{tmp.shape[0]} records')
-            tmp.to_csv(f'mydata/merged/lexicon/{theme}_{sentiment}.tsv', sep='\t', header=True, index=False, quoting=3)
+            tmp.to_csv(f'mydata/citations/lexicon/{theme}_{sentiment}.tsv', sep='\t', header=True, index=False, quoting=3)
         print()
-        df.to_csv(f'mydata/merged/lexicon/{theme}_total.tsv', sep='\t', header=True, index=False, quoting=3)
+        df.to_csv(f'mydata/citations/lexicon/{theme}_total.tsv', sep='\t', header=True, index=False, quoting=3)
