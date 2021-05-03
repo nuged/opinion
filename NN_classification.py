@@ -24,9 +24,9 @@ class RuBERT_conv(nn.Module):
 
         self.config = self.bert.config
         self.config.max_position_embeddings = 256
-        self.fc = nn.Linear(self.config.hidden_size, 1024)
+        self.fc = nn.Linear(self.config.hidden_size, 512)
         n_outputs = 2 if TASK == 'relevance' else 3
-        self.fc2 = nn.Linear(1024, n_outputs)
+        self.fc2 = nn.Linear(512, n_outputs)
         self.drop = nn.Dropout(0.5)
 
         self.tokenizer = BertTokenizer.from_pretrained("DeepPavlov/bert-base-cased-conversational", do_lower_case=False)
@@ -86,12 +86,12 @@ def cross_validation(ModelCls, data, labels, n_splits=4):
 
         train_ds = myDataset(train_idx, data, labels)
         test_ds = myDataset(test_idx, data, labels)
-        train_dl = DataLoader(train_ds, batch_size=32, shuffle=True)
-        test_dl = DataLoader(test_ds, batch_size=32, shuffle=False)
+        train_dl = DataLoader(train_ds, batch_size=25, shuffle=True)
+        test_dl = DataLoader(test_ds, batch_size=25, shuffle=False)
 
         model = ModelCls().to(device)
         optimizer = AdamW(model.parameters(), lr=1e-6, weight_decay=1e-6)
-        scheduler = lr_scheduler.OneCycleLR(optimizer, max_lr=7e-5, steps_per_epoch=ceil(len(train_ds) / 32),
+        scheduler = lr_scheduler.OneCycleLR(optimizer, max_lr=7e-5, steps_per_epoch=ceil(len(train_ds) / 25),
                                             epochs=10)
 
         train(model, optimizer, scheduler, train_dl, epochs=10)
