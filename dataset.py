@@ -72,7 +72,7 @@ def write_statistics(df):
 
 
 if __name__ == '__main__':
-    # pd.set_option("display.max_rows", 100, "display.max_columns", None)
+    pd.set_option("display.max_rows", 100, "display.max_columns", None)
 
     filename = 'mydata/labelled/results_20210430115452.tsv'
     df = read_file(filename)
@@ -82,6 +82,7 @@ if __name__ == '__main__':
     cols = list(values.values())
     cols.remove('NA')
     cols.remove('rel')
+
     f = open('mydata/labelled/dataset_stats.tsv', 'w')
     print("theme\tn_relevant\tn_positive\tn_negative\tn_other", file=f)
     for t in ['masks', 'vaccines', 'quarantine', 'government']:
@@ -90,13 +91,20 @@ if __name__ == '__main__':
         relevant = counts[counts.irrel < counts[cols].sum(axis=1)]
         positive = counts[counts.pos > 0]
         negative = counts[counts.neg > 0]
-        other = relevant.drop(positive.index.union(negative.index))
 
         intersection_ids = positive.index.intersection(negative.index)
         intersection = positive.loc[intersection_ids]
-        intersection.to_csv(f'mydata/labelled/{t}/{t}_overlap.tsv', sep='\t')
+        print(t, len(intersection_ids))
+
         positive = positive.drop(intersection_ids)
         negative = negative.drop(intersection_ids)
+
+        pos_ids = intersection.pos > intersection.neg
+        positive = positive.append(intersection[pos_ids])
+        neg_ids = intersection.neg > intersection.pos
+        negative = negative.append(intersection[neg_ids])
+
+        other = relevant.drop(positive.index.union(negative.index))
 
         print(f"{t}\t{relevant.shape[0]}\t{positive.shape[0]}\t{negative.shape[0]}\t{other.shape[0]}", file=f)
 
@@ -105,7 +113,7 @@ if __name__ == '__main__':
         counts = counts[['text', 'relevant']]
         counts.to_csv(f'mydata/labelled/{t}/{t}_relevance.tsv', sep='\t')
 
-        relevant = relevant.drop(intersection_ids)
+        # relevant = relevant.drop(intersection_ids)
         # relevant = relevant.drop(columns=cols)
         relevant = relevant[['text']]
         relevant['sentiment'] = 0

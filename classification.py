@@ -7,6 +7,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from data_preparation import lemmatize, tokenize, stopwords, punctuation
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, plot_confusion_matrix
+from sklearn.dummy import DummyClassifier
 import pandas as pd
 
 TASK = 'sentiment'
@@ -36,7 +37,7 @@ def cross_validation(model, data, labels, n_splits=4):
     #     c = confusion_matrix(gts, predictions)
     #     print(type(model).__name__, '\n', c / c.sum(axis=1))
 
-    avg_mode = 'binary' if TASK == 'relevance' else 'weighted'
+    avg_mode = 'binary' if TASK == 'relevance' else 'micro'
 
     return {'accuracy': accuracy_score(gts, predictions),
             'precision': precision_score(gts, predictions, average=avg_mode),
@@ -52,8 +53,8 @@ def write_topwords(svm_cls, data, labels, features, theme):
             print(f"{features[idx]}\t{coef[idx]:3.2f}", file=f)
 
 
-def write_results(results, theme):
-    f = open(f'mydata/labelled/{TASK}/{theme}_comparison.tsv', 'w')
+def write_results(results, theme, task=TASK):
+    f = open(f'mydata/labelled/{task}/{theme}_comparison.tsv', 'a')
     print(f"name\taccuracy\tprecision\trecall\tf1", file=f)
     for model, scores in results.items():
         acc = scores['accuracy'] * 100
@@ -66,6 +67,8 @@ def write_results(results, theme):
 
 if __name__ == '__main__':
     for t in ['masks', 'quarantine', 'government', 'vaccines']:
+        if t != 'government':
+            continue
         df = pd.read_csv(f'mydata/labelled/{t}/{t}_{TASK}.tsv', index_col=['text_id'], quoting=3, sep='\t')
         data = prepare_data(df.text.values)
 
@@ -78,9 +81,9 @@ if __name__ == '__main__':
         bernNB_cls = BernoulliNB()
         rf_cls = RandomForestClassifier(random_state=0)
         gb_cls = GradientBoostingClassifier(random_state=0)
-
+        dummy = DummyClassifier(random_state=0, strategy='most_frequent')
         results = {}
-        for cls in [svm_cls, multiNB_cls, bernNB_cls, rf_cls, gb_cls]:
+        for cls in [svm_cls, multiNB_cls, bernNB_cls, rf_cls, gb_cls, dummy]:
             model_name = type(cls).__name__
             scores = cross_validation(cls, data, labels, n_splits=5)
             results[model_name] = scores
