@@ -20,7 +20,7 @@ torch.set_num_threads(10)
 class RuBERT_conv(nn.Module):
     def __init__(self):
         super(RuBERT_conv, self).__init__()
-        self.bert = BertModel.from_pretrained("DeepPavlov/bert-base-cased-conversational")
+        self.bert = BertModel.from_pretrained("DeepPavlov/rubert-base-cased-sentence")
 
         self.config = self.bert.config
         self.config.max_position_embeddings = 256
@@ -29,7 +29,7 @@ class RuBERT_conv(nn.Module):
         self.fc2 = nn.Linear(512, n_outputs)
         self.drop = nn.Dropout(0.5)
 
-        self.tokenizer = BertTokenizer.from_pretrained("DeepPavlov/bert-base-cased-conversational", do_lower_case=False)
+        self.tokenizer = BertTokenizer.from_pretrained("DeepPavlov/rubert-base-cased-sentence", do_lower_case=False)
 
     def forward(self, *args, **kwargs):
         x = self.bert(*args, **kwargs).last_hidden_state.mean(axis=1)
