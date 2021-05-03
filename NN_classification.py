@@ -11,10 +11,10 @@ from math import ceil
 import gc
 from sklearn.metrics import confusion_matrix
 
-TASK = 'sentiment'
+TASK = 'relevance'
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-torch.set_num_threads(10)
+# torch.set_num_threads(10)
 
 
 class RuBERT_conv(nn.Module):
@@ -126,7 +126,7 @@ if __name__ == '__main__':
 
         for Cls in [RuBERT_conv]:
             model_name = Cls.__name__
-            conf = cross_validation(Cls, data, labels, n_splits=5)
+            conf = cross_validation(Cls, data, labels, n_splits=4)
             results[model_name] = conf
 
         with open(f'{TASK}_{t}_conf.txt', 'w') as f:
