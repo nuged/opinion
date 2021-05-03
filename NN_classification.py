@@ -91,7 +91,7 @@ def cross_validation(ModelCls, data, labels, n_splits=4):
 
         model = ModelCls().to(device)
         optimizer = AdamW(model.parameters(), lr=1e-6, weight_decay=1e-6)
-        scheduler = lr_scheduler.OneCycleLR(optimizer, max_lr=7e-5, steps_per_epoch=ceil(len(train_ds) / 8),
+        scheduler = lr_scheduler.OneCycleLR(optimizer, max_lr=7e-5, steps_per_epoch=ceil(len(train_ds) / 16),
                                             epochs=8)
 
         train(model, optimizer, scheduler, train_dl, epochs=8)
