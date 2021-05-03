@@ -20,7 +20,7 @@ torch.set_num_threads(10)
 class RuBERT_conv(nn.Module):
     def __init__(self):
         super(RuBERT_conv, self).__init__()
-        self.bert = BertModel.from_pretrained("DeepPavlov/rubert-base-cased-sentence")
+        self.bert = BertModel.from_pretrained("DeepPavlov/bert-base-cased-conversational")
 
         self.config = self.bert.config
         self.config.max_position_embeddings = 256
@@ -29,7 +29,6 @@ class RuBERT_conv(nn.Module):
         self.fc2 = nn.Linear(512, n_outputs)
         self.drop = nn.Dropout(0.5)
 
-        self.tokenizer = BertTokenizer.from_pretrained("DeepPavlov/rubert-base-cased-sentence", do_lower_case=False)
 
     def forward(self, *args, **kwargs):
         x = self.bert(*args, **kwargs).last_hidden_state.mean(axis=1)
@@ -42,7 +41,8 @@ class RuBERT_conv(nn.Module):
 
 
 def apply_model(model, texts):
-    input_data = model.tokenizer(texts, padding=True, return_tensors='pt')
+    tokenizer = BertTokenizer.from_pretrained("DeepPavlov/bert-base-cased-conversational", do_lower_case=False)
+    input_data = tokenizer(texts, padding=True, return_tensors='pt')
     todevice(input_data)
     output = model(**input_data)
     return output
@@ -119,6 +119,7 @@ if __name__ == '__main__':
         labels = df.sentiment.values if TASK == 'sentiment' else df.relevant.values
 
         results = {}
+
         for Cls in [RuBERT_conv]:
             model_name = Cls.__name__
             conf = cross_validation(Cls, data, labels, n_splits=5)
