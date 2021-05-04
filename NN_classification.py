@@ -133,7 +133,7 @@ if __name__ == '__main__':
 
         results = {}
 
-        ruber_conv = RuBERT_conv()
+        ruber_conv = RuBERT_conv().to(device)
 
         for cls in [ruber_conv]:
             model_name = type(cls).__name__
