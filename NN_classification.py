@@ -74,11 +74,20 @@ def predict(model, dl):
     return y_true, y_pred
 
 
-def cross_validation(ModelCls, data, labels, n_splits=4):
+def cross_validation(model, data, labels, n_splits=4):
     cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=3)
     predictions = []
     gts = []
-    for train_idx, test_idx in cv.split(data, labels):
+
+    optimizer = AdamW(model.parameters(), lr=1e-6, weight_decay=1e-6)
+
+    torch.save({
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+    }, f'models/{type(model).__name__}_cv.pt')
+
+    for n, (train_idx, test_idx) in enumerate(cv.split(data, labels)):
+        print(f'{n}-th fold')
         torch.manual_seed(7)
 
         if device == 'cuda':
@@ -86,12 +95,14 @@ def cross_validation(ModelCls, data, labels, n_splits=4):
 
         train_ds = myDataset(train_idx, data, labels)
         test_ds = myDataset(test_idx, data, labels)
-        train_dl = DataLoader(train_ds, batch_size=16, shuffle=True)
-        test_dl = DataLoader(test_ds, batch_size=16, shuffle=False)
+        train_dl = DataLoader(train_ds, batch_size=32, shuffle=True)
+        test_dl = DataLoader(test_ds, batch_size=32, shuffle=False)
 
-        model = ModelCls().to(device)
-        optimizer = AdamW(model.parameters(), lr=1e-6, weight_decay=1e-6)
-        scheduler = lr_scheduler.OneCycleLR(optimizer, max_lr=7e-5, steps_per_epoch=ceil(len(train_ds) / 16),
+        checkpoint = torch.load(f'models/{type(model).__name__}_cv.pt')
+
+        model.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        scheduler = lr_scheduler.OneCycleLR(optimizer, max_lr=7e-5, steps_per_epoch=ceil(len(train_ds) / 32),
                                             epochs=8)
 
         train(model, optimizer, scheduler, train_dl, epochs=8)
@@ -103,9 +114,6 @@ def cross_validation(ModelCls, data, labels, n_splits=4):
         del train_dl
         del test_ds
         del test_dl
-        del model
-        del optimizer
-        del scheduler
         gc.collect()
 
         if device == 'cuda':
@@ -118,17 +126,26 @@ def cross_validation(ModelCls, data, labels, n_splits=4):
 
 if __name__ == '__main__':
     for t in ['masks', 'quarantine', 'government', 'vaccines']:
+        print(f'{t}:')
         df = pd.read_csv(f'mydata/labelled/{t}/{t}_{TASK}.tsv', index_col=['text_id'], quoting=3, sep='\t')
         data = df.text.values
         labels = df.sentiment.values if TASK == 'sentiment' else df.relevant.values
 
         results = {}
 
-        for Cls in [RuBERT_conv]:
-            model_name = Cls.__name__
-            conf = cross_validation(Cls, data, labels, n_splits=4)
+        ruber_conv = RuBERT_conv()
+
+        for cls in [ruber_conv]:
+            model_name = type(cls).__name__
+            conf = cross_validation(cls, data, labels, n_splits=4)
             results[model_name] = conf
 
         with open(f'{TASK}_{t}_conf.txt', 'w') as f:
             for name, c in results.items():
                 print(f"{name}:\n{c}\n", file=f)
+
+        del ruber_conv
+        del results
+        gc.collect()
+        if device == 'cuda':
+            torch.cuda.empty_cache()
