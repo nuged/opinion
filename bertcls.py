@@ -71,6 +71,7 @@ def todevice(d):
 
 
 def apply_model(model, texts):
+    tokenizer = BertTokenizer.from_pretrained("DeepPavlov/rubert-base-cased-sentence", do_lower_case=False)
     input_data = tokenizer(texts, padding=True, return_tensors='pt')
     todevice(input_data)
     output = model(**input_data)
@@ -149,12 +150,16 @@ def plot_history(loss_history, validation, F1, acc, sizes, title="", clear_outpu
     ax1.scatter(sizes, validation, marker='*', c='red', zorder=1, s=50)
     ax1.grid()
     ax1.set_xticks([0] + sizes)
+    ax1.set_xlabel('Итерация')
+    ax1.set_ylabel('Кросс-энтропия')
     ax2.scatter(np.arange(0, len(F1)), F1)
     ax2.scatter(np.arange(0, len(F1)), acc)
     ax2.plot(F1, label="F1")
     ax2.plot(acc, label="acc")
     ax2.grid()
     ax2.set_yticks(np.arange(min(F1), max(acc), 1))
+    ax2.set_xlabel('Эпоха')
+    ax2.set_ylabel('Метрика (%)')
     ax2.legend()
     fig.suptitle(title)
     plt.show()
