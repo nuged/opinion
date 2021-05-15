@@ -62,7 +62,7 @@ class Classifier(nn.Module):
 
 
 tokenizer = BertTokenizer.from_pretrained("DeepPavlov/rubert-base-cased-sentence", do_lower_case=False)
-
+tokenizer.model_max_length = 128
 
 def todevice(d):
     for k in d:
@@ -71,11 +71,10 @@ def todevice(d):
 
 
 def apply_model(model, texts):
-    input_data = tokenizer(texts, padding=True, return_tensors='pt')
+    input_data = tokenizer(texts, padding=True, return_tensors='pt', max_length=128, truncation=True)
     todevice(input_data)
     output = model(**input_data)
     return output
-
 
 def get_scores(y_true, y_pred):
     result = {'accuracy': accuracy_score(y_true, y_pred) * 100, 'precision': precision_score(y_true, y_pred) * 100,

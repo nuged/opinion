@@ -10,7 +10,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from sklearn.dummy import DummyClassifier
 import pandas as pd
 
-TASK = 'sentiment'
+TASK = 'relevance'
 
 
 def prepare_data(texts):
@@ -37,7 +37,7 @@ def cross_validation(model, data, labels, n_splits=4):
     #     c = confusion_matrix(gts, predictions)
     #     print(type(model).__name__, '\n', c / c.sum(axis=1))
 
-    avg_mode = 'binary' if TASK == 'relevance' else 'micro'
+    avg_mode = 'binary' if TASK == 'relevance' else 'macro'
 
     return {'accuracy': accuracy_score(gts, predictions),
             'precision': precision_score(gts, predictions, average=avg_mode),
@@ -67,12 +67,12 @@ def write_results(results, theme, task=TASK):
 
 if __name__ == '__main__':
     for t in ['masks', 'quarantine', 'government', 'vaccines']:
-        if t != 'government':
-            continue
         df = pd.read_csv(f'mydata/labelled/{t}/{t}_{TASK}.tsv', index_col=['text_id'], quoting=3, sep='\t')
         data = prepare_data(df.text.values)
 
-        vec = TfidfVectorizer(lowercase=False, tokenizer=lambda x: x, preprocessor=lambda x: x, min_df=5)
+        vec = TfidfVectorizer(lowercase=False, tokenizer=lambda x: x, preprocessor=lambda x: x, min_df=5,
+                              ngram_range=(1, 1))
+
         data = vec.fit_transform(data)
         labels = df.sentiment.values if TASK == 'sentiment' else df.relevant.values
 
@@ -89,4 +89,3 @@ if __name__ == '__main__':
             results[model_name] = scores
 
         write_results(results, theme=t)
-        # write_topwords(svm_cls, data, labels, vec.get_feature_names(), theme=t)
