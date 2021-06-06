@@ -1,3 +1,5 @@
+import random
+
 from transformers import BertTokenizer, BertForSequenceClassification, BertModel, AdamW
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
@@ -299,7 +301,8 @@ if __name__ == "__main__":
     labels = [1] * len(data)
     data.extend(read_data('mydata/opinion mining/neg_final.txt'))
     labels += [0] * (len(data) - len(labels))
-
+    ds = myDataset(random.sample(range(len(data)), 1000), data, labels)
+    exit(0)
     print('loaded', len(data))
     # p = Pool(processes=4)
     # data = p.map(remove_links, data)

@@ -6,7 +6,7 @@ values = {'негативное': 'neg', 'релевантно вопросу': 
 
 
 def read_file(filename):
-    df = pd.read_csv(filename, index_col=['id'], quoting=3, sep='\t')
+    df = pd.read_csv(filename, index_col=['id'], quoting=3, sep='\t').dropna()
     for t in ['masks', 'quarantine', 'vaccines', 'government']:
         df[t] = df[t].apply(lambda x: values[x.split(' - ')[1]])
     # print((df == 'NA').any(axis=1))
@@ -74,7 +74,7 @@ def write_statistics(df):
 if __name__ == '__main__':
     pd.set_option("display.max_rows", 100, "display.max_columns", None)
 
-    filename = 'mydata/labelled/results_20210430115452.tsv'
+    filename = 'mydata/labelled/results_20210514201313.tsv'
     df = read_file(filename)
 
     write_statistics(df)
@@ -96,6 +96,8 @@ if __name__ == '__main__':
         intersection = positive.loc[intersection_ids]
         print(t, len(intersection_ids))
 
+        intersection.to_csv(f'mydata/labelled/{t}/{t}_overlap.tsv', sep='\t', quoting=3)
+
         positive = positive.drop(intersection_ids)
         negative = negative.drop(intersection_ids)
 
@@ -111,7 +113,7 @@ if __name__ == '__main__':
         counts['relevant'] = 0
         counts.loc[relevant.index, 'relevant'] = 1
         counts = counts[['text', 'relevant']]
-        counts.to_csv(f'mydata/labelled/{t}/{t}_relevance.tsv', sep='\t')
+        counts.to_csv(f'mydata/labelled/{t}/{t}_relevance.tsv', sep='\t', quoting=3)
 
         # relevant = relevant.drop(intersection_ids)
         # relevant = relevant.drop(columns=cols)
@@ -119,5 +121,5 @@ if __name__ == '__main__':
         relevant['sentiment'] = 0
         relevant.loc[positive.index, 'sentiment'] = 2
         relevant.loc[other.index, 'sentiment'] = 1
-        relevant.to_csv(f'mydata/labelled/{t}/{t}_sentiment.tsv', sep='\t')
+        relevant.to_csv(f'mydata/labelled/{t}/{t}_sentiment.tsv', sep='\t', quoting=3)
     f.close()

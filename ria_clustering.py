@@ -173,7 +173,7 @@ if __name__ == '__main__':
     # high = df.sentiment.max()
     # df.sentiment = 2 * (df.sentiment - low) / (high - low) - 1
     #
-    # df.sentiment[df.absence == 1] *= -1
+    df.sentiment[df.absence == 1] *= -1
     #
     # plt.scatter(df.sentiment, df.Topic)
     # plt.show()
@@ -185,11 +185,11 @@ if __name__ == '__main__':
     #
     # # print(df.drop(columns=['text']))
     #
-    # from scipy.stats import pearsonr, spearmanr, kendalltau
-    # print(pearsonr(df.sentiment, df.Topic))
-    # print(spearmanr(df.sentiment, df.Topic))
-    # print(kendalltau(df.sentiment, df.Topic))
-    # exit(0)
+    from scipy.stats import pearsonr, spearmanr, kendalltau
+    print(pearsonr(df.sentiment, df.Topic))
+    print(spearmanr(df.sentiment, df.Topic))
+    print(kendalltau(df.sentiment, df.Topic))
+    exit(0)
 
     # embeddings = load_embeddings('vaccine')
     embeddings, _ = c_tf_idf(df.text.values)

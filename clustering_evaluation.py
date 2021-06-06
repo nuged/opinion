@@ -14,9 +14,14 @@ df = pd.read_csv('mydata/clustering_test.tsv', index_col=None, sep='\t', quoting
 predicted = df[df.test != -1].test.tolist()
 labelled = df[df.test != -1].Topic.tolist()
 
-from sklearn.metrics import classification_report
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
-print(classification_report(labelled, predicted))
+print(f"{accuracy_score(labelled, predicted) * 100:4.2f}")
+print(f"{precision_score(labelled, predicted, average='weighted') * 100:4.2f}")
+print(f"{recall_score(labelled, predicted, average='weighted') * 100:4.2f}")
+print(f"{f1_score(labelled, predicted, average='weighted') * 100:4.2f}")
+
+exit(0)
 
 # predicted = pd.read_csv(f'mydata/RIA/topics/clustering/vaccine_cluster.tsv',
 #                         index_col=None, sep='\t', quoting=3)

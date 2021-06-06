@@ -68,4 +68,6 @@ def make_sentiment_qa(filename):
 
 
 if __name__ == '__main__':
+    make_relevance_nli('mydata/labelled/relevance_nli.tsv')
     make_sentiment_qa('mydata/labelled/sentiment_qa.tsv')
+    make_sentiment_nli('mydata/labelled/sentiment_nli.tsv')

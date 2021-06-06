@@ -1,87 +1,44 @@
-import re
-from data_preparation import tokenize, lemmatize
-from multiprocessing import Pool
-from itertools import repeat
 import pandas as pd
-from unicodedata import normalize
-# from nltk.stem.snowball import SnowballStemmer
-#
-# stemmer = SnowballStemmer("russian")
-# lemmatize = lambda word: stemmer.stem(word)
+from data_preparation import tokenize, punctuation, stopwords
+import pymorphy2
+from multiprocessing import Pool
 
-# lem: 578, stem: 564
+# df = pd.read_csv('mydata/labelled/results_20210514201313.tsv', quoting=3, index_col='id', sep='\t').dropna()
+df = pd.read_csv('mydata/merged/opinion_scores.tsv', quoting=3, sep='\t', header=None)
+morph = pymorphy2.MorphAnalyzer()
+pd.set_option("display.max_rows", 100, "display.max_columns", None)
 
-def process_line(line, keywords):
-    words = tokenize(line)
-    found = []
-    words_ = list(map(lambda x: lemmatize(x).lower(), words))
-    for ngram in range(1, 11):
-        pos = 0
-        for i, w in enumerate(words_):
-            if i + ngram > len(words_):
+def extract(text, kwords):
+    words = tokenize(text)
+    words = [w for w in words if w.lower() not in stopwords and w.lower not in punctuation]
+    results = []
+    pos = 0
+    for i, w in enumerate(words):
+        pos = text.find(w, pos)
+        lemmas = [p.normal_form for p in morph.parse(w)]
+        for lemma in lemmas:
+            if lemma in kwords:
+                results.append((w, pos, pos + len(w)))
                 break
-            if words[i] in ["''", "``"]:
-                words[i] = '"'
-            pos = line.find(words[i], pos)
-            end = line.find(words[i + ngram - 1], pos) + len(words[i + ngram - 1])
-            candidate = ' '.join(words_[i: i + ngram])
-            if candidate in keywords:
-                found.append((line[pos: end], pos, end))
-            pos += len(words[i])
-    return line.strip(), found
+        pos += len(w)
+    return results
 
+kwords = ["заговор", "ширма", "прикрытие", "происхождение", "чип", "чипировать",
+                            "чипирование", "искусственный", "гейтс", "5G", "микросхема",
+                            "бактериологический", "оружие", "война", "вживить", "вживлять", "вживление",
+          "утечка", "лаборатория"]
 
-if __name__ == '__main__':
-    keywords = set()
-    with open("data/rubrs.json") as f:
-        for line in f:
-            line = re.sub(r'\\', '', line)
-            entries = re.findall(r'"textentrystr":\s"(.+?)",\s"confirmid"', line)
-            entries = list(map(tokenize, entries))
-            entries = [[lemmatize(t) for t in tokens] for tokens in entries]
-            entries = map(' '.join, entries)
-            entries = map(str.lower, entries)
-            entries = list(entries)
-            if entries:
-                keywords.update(entries)
+with Pool(10) as p:
+    extracted = p.starmap(extract, zip(df[1].values, [kwords] * df.shape[0]), chunksize=2048)
 
-    data = pd.read_excel("Coronavirus.xlsx", engine='openpyxl')[['Ссылка', 'Высказывание', 'Ключевые слова', 'Счёт']].dropna()
-    data = data[['Высказывание', "Ключевые слова"]].values
-    data = list(map(lambda x: [normalize("NFKC", x[0]), x[1].lower().split(', ')], data))
+df['kwords'] = extracted
+df = df[df['kwords'].astype(str) != '[]']
 
-    for i, d in enumerate(data):
-        words = []
-        for w in d[1]:
-            cands = re.findall(r'(.*)\((.+)\)', w)
-            if cands:
-                cands = list(map(str.strip, cands[0]))
-                cands = list(map(lemmatize, cands))
-                words.extend(cands)
-            else:
-                w = tokenize(w)
-                w = map(lemmatize, w)
-                w = ' '.join(w)
-                words.append(w)
-        data[i][1] = words
+for i, row in df.iterrows():
+    text = row[1]
+    words = row.kwords
+    for w, s, e in words:
+        assert w == text[s: e]
+# print(extract(df.text[11659], kwords))
 
-    p = Pool(10)
-    result = p.starmap(process_line, data)
-    p.close()
-    f = open('mydata/kwords/kwords_manual.tsv', 'w')
-    g = open('mydata/kwords/kwords_auto.tsv', 'w')
-    failed = 0
-    for i, r in enumerate(result):
-        if r[1]:
-            print(f"{r[0]}\t{r[1]}", file=f)
-        else:
-            r_ = process_line(r[0], keywords)
-            if r_[1]:
-                print(f"{r_[0]}\t{r_[1]}", file=g)
-            else:
-                failed += 1
-                print(data[i])
-    f.close()
-    g.close()
-
-    print(failed)
-
+df.to_csv('conspiracy.tsv', quoting=3, index=None, header=['user_id', 'text', 'p_opnion', 'kwords'], sep='\t')
