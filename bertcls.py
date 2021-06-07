@@ -160,22 +160,22 @@ def plot_history(loss_history, validation, F1, acc, sizes, title="", clear_outpu
     return fig
 
 
-def cross_validation(model, data, labels, n_splits=4, theme=''):
-    BS = 32
-    EPOCHS = 7
+def cross_validation(model, params, data, labels, n_splits=4, title=''):
+    BS = params['BS']
+    EPOCHS = params['n_epochs']
 
     cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=3)
-    predictions = []
+    probabilities = []
     gts = []
 
     torch.manual_seed(7)
 
-    optimizer = AdamW(model.parameters(), lr=1e-5, weight_decay=1e-6)
+    optimizer = AdamW(model.parameters(), lr=params['lr'], weight_decay=params['w_decay'])
 
     torch.save({
         'model_state_dict': model.state_dict(),
         'optimizer_state_dict': optimizer.state_dict(),
-    }, f'models/{type(model).__name__}_cv.pt')
+    }, f'models/{type(model).__name__}_init.pt')
 
     for n, (train_idx, test_idx) in enumerate(cv.split(data, labels)):
         print(f'{n}-th fold')
@@ -192,30 +192,20 @@ def cross_validation(model, data, labels, n_splits=4, theme=''):
 
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        scheduler = lr_scheduler.OneCycleLR(optimizer, max_lr=5e-5, steps_per_epoch=ceil(len(train_ds) / BS),
+        scheduler = OneCycleLR(optimizer, max_lr=params['max_lr'], steps_per_epoch=ceil(len(train_ds) / BS),
                                             epochs=EPOCHS, anneal_strategy='linear')
 
         for _ in train(model, optimizer, scheduler, train_dl, EPOCHS, None):
             pass
 
-        loss, y_test, y_pred = predict(model, test_dl)
-        predictions.extend(y_pred)
+        loss, y_test, probs = predict(model, test_dl)
+        probabilities.extend(probs)
         gts.extend(y_test)
 
-        del train_ds
-        del train_dl
-        del test_ds
-        del test_dl
-        gc.collect()
+    with open(f'history/{title}_{type(model).__name__}_probs_CV.pk', 'wb') as f:
+        pickle.dump((gts, probabilities), f)
 
-        if device == 'cuda':
-            torch.cuda.empty_cache()
-
-    conf = confusion_matrix(gts, predictions)
-
-    with open(f'{TASK}_{theme}_{type(model).__name__}_CV.pk', 'wb') as f:
-        pickle.dump(conf, f)
-
+    return gts, probabilities
 
 def simple_test(model, params, train_ds, test_ds, title=''):
     torch.manual_seed(7)
@@ -224,7 +214,7 @@ def simple_test(model, params, train_ds, test_ds, title=''):
     EPOCHS = params['n_epochs']
     optimizer = AdamW(model.parameters(), lr=params['lr'], weight_decay=params['w_decay'])
     scheduler = None if not params['shed'] \
-        else OneCycleLR(optimizer, max_lr=5e-5, steps_per_epoch=ceil(len(train_ds) / BS),
+        else OneCycleLR(optimizer, max_lr=params['max_lr'], steps_per_epoch=ceil(len(train_ds) / BS),
                         epochs=EPOCHS, anneal_strategy='linear')
 
     train_dl = DataLoader(train_ds, batch_size=BS, shuffle=True)
@@ -249,7 +239,7 @@ def simple_test(model, params, train_ds, test_ds, title=''):
                 'epoch': epoch,
                 'model': model.state_dict(),
                 'optimizer': optimizer.state_dict(),
-                'scheduler': scheduler.state_dict(),
+                'scheduler': scheduler.state_dict() if scheduler else None,
             }, f'models/{title}_{name}.pt')
 
         loss_history.extend(epoch_history)
@@ -268,12 +258,17 @@ def simple_test(model, params, train_ds, test_ds, title=''):
     with open(f'history/{title}_{name}_probs.pk', 'wb') as f:
         pickle.dump(y_history[idx], f)
 
+    return y_history[idx]
+
 
 if __name__ == "__main__":
     data = read_data('mydata/opinion mining/pos_final.txt')
     labels = [1] * len(data)
     data.extend(read_data('mydata/opinion mining/neg_final.txt'))
     labels += [0] * (len(data) - len(labels))
+
+    data = data[:100]
+    labels = labels[:100]
 
     ds = myDataset(range(len(data)), data, labels)
     print(f'loaded {len(ds)} examples')
@@ -285,12 +280,12 @@ if __name__ == "__main__":
     print(cls.tokenizer)
 
     params = {
-        'n_epochs': 10,
-        'BS': 64,
-        'lr': 1e-5,
-        'max_lr': 1e-4,
+        'n_epochs': 3,
+        'BS': 10,
+        'lr': 1e-6,
+        'max_lr': 1e-2,
         'w_decay': 1e-5,
-        'shed': True
+        'shed': False
     }
 
     simple_test(cls, params, train_ds, test_ds, title='sentiment_qa')
