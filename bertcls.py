@@ -168,6 +168,14 @@ def cross_validation(model, params, data, labels, n_splits=4, title=''):
     probabilities = []
     gts = []
 
+    epoch_size = len(data) / n_splits * (n_splits - 1)
+    epoch_size = int(epoch_size)
+    epoch_size = (epoch_size + BS - 1) // BS
+
+    scores_avg = {m: np.zeros(EPOCHS) for m in ['F1', 'acc']}  # metric -> [m_at_ep_1, m_at_ep_2, ... ]
+    loss_history = np.zeros((EPOCHS, epoch_size))
+    val_history = np.zeros(EPOCHS)
+
     torch.manual_seed(7)
 
     optimizer = AdamW(model.parameters(), lr=params['lr'], weight_decay=params['w_decay'])
@@ -188,15 +196,20 @@ def cross_validation(model, params, data, labels, n_splits=4, title=''):
         train_dl = DataLoader(train_ds, batch_size=BS, shuffle=True)
         test_dl = DataLoader(test_ds, batch_size=BS, shuffle=False)
 
-        checkpoint = torch.load(f'models/{type(model).__name__}_cv.pt')
+        checkpoint = torch.load(f'models/{type(model).__name__}_init.pt')
 
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         scheduler = OneCycleLR(optimizer, max_lr=params['max_lr'], steps_per_epoch=ceil(len(train_ds) / BS),
                                             epochs=EPOCHS, anneal_strategy='linear')
-
-        for _ in train(model, optimizer, scheduler, train_dl, EPOCHS, None):
-            pass
+        epoch = 0
+        for epoch_history, test_loss, test_scores, y_true, probs in \
+                train(model, optimizer, scheduler, train_dl, EPOCHS, None):
+            loss_history[epoch] += epoch_history
+            val_history[epoch] += test_loss
+            for m, val in test_scores.items():
+                scores_avg[m][epoch] += val
+            epoch += 1
 
         loss, y_test, probs = predict(model, test_dl)
         probabilities.extend(probs)
@@ -204,6 +217,17 @@ def cross_validation(model, params, data, labels, n_splits=4, title=''):
 
     with open(f'history/{title}_{type(model).__name__}_probs_CV.pk', 'wb') as f:
         pickle.dump((gts, probabilities), f)
+
+    for m in scores_avg:
+        scores_avg[m] /= n_splits
+    loss_history /= n_splits
+    val_history /= n_splits
+    sizes = np.cumsum([epoch_size for i in range(EPOCHS)])
+
+    fig = plot_history(loss_history.reshape(-1), val_history, scores_avg['F1'], scores_avg['accuracy'],
+                       sizes, title=title, clear_output=False)
+
+    fig.savefig(f'plots/{title}_{type(model).__name__}_plot_CV.png')
 
     return gts, probabilities
 
