@@ -15,14 +15,14 @@ def make_relevance_nli(filename):
     data = pd.merge(df, pd.Series(mapping.keys(), name='hypothesis'), how='cross')
 
     data['label'] = data.apply(lambda row: row['relevant' + mapping[row.hypothesis]], axis=1)
-    data = data[['text', 'hypothesis', 'label']]
+    data = data[['text', 'hypothesis', 'label', 'p_opinion']]
 
     data.to_csv(filename, sep='\t', quoting=3, index=False)
 
 
 def make_sentiment_nli(filename):
     df = pd.read_csv(f'mydata/labelled/masks/masks_sentiment.tsv', index_col=['text_id'], quoting=3, sep='\t')[
-        ['sentiment']]
+        ['sentiment', 'p_opinion']]
     for t in ['government', 'vaccines', 'quarantine']:
         tmp = pd.read_csv(f'mydata/labelled/{t}/{t}_sentiment.tsv', index_col=['text_id'], quoting=3, sep='\t')
         df = df.join(tmp['sentiment'], rsuffix=f'_{t}', how='outer')
@@ -42,14 +42,14 @@ def make_sentiment_nli(filename):
         return row['sentiment' + mapping[t]] == value[s]
 
     df['label'] = df.apply(foo, axis=1)
-    df = df[['text', 'hypothesis', 'label']].dropna()
+    df = df[['text', 'hypothesis', 'label', 'p_opinion']].dropna()
     df['label'] = df.label.astype(int)
     df.to_csv(filename, sep='\t', quoting=3, index=False)
 
 
 def make_sentiment_qa(filename):
     df = pd.read_csv(f'mydata/labelled/masks/masks_sentiment.tsv', index_col=['text_id'], quoting=3, sep='\t')[
-        ['sentiment']]
+        ['sentiment', 'p_opinion']]
     for t in ['government', 'vaccines', 'quarantine']:
         tmp = pd.read_csv(f'mydata/labelled/{t}/{t}_sentiment.tsv', index_col=['text_id'], quoting=3, sep='\t')
         df = df.join(tmp['sentiment'], rsuffix=f'_{t}', how='outer')
@@ -61,7 +61,7 @@ def make_sentiment_qa(filename):
 
     data = pd.merge(df, pd.Series(mapping.keys(), name='question'), how='cross')
     data['label'] = data.apply(lambda row: row['sentiment' + mapping[row.question]], axis=1)
-    data = data[['text', 'question', 'label']]
+    data = data[['text', 'question', 'label', 'p_opinion']]
     data.dropna(inplace=True)
     data.label = data.label.astype(int)
     data.to_csv(filename, sep='\t', quoting=3, index=False)

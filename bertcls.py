@@ -32,33 +32,21 @@ class myDataset(Dataset):  # here
 class Klassifier(nn.Module):
     def __init__(self, n_outputs=2):
         super(Klassifier, self).__init__()
-        self.bert = BertModel.from_pretrained("DeepPavlov/rubert-base-cased-sentence")
+        self.bert = BertModel.from_pretrained("DeepPavlov/rubert-base-cased-conversational")
         self.nout = n_outputs
-        # for p in self.bert.parameters():
-        #     p.requires_grad = False
-
-        # for p in self.bert.named_parameters():
-        #     if "layer" in p[0] and int(p[0].split(".")[2]) > 5:
-        #         p[1].requires_grad = True
-
         self.config = self.bert.config
-        self.config.max_position_embeddings = 256
-        # self.config.hidden_dropout_prob = 0.4
-        # self.config.attention_probs_dropout_prob = 0.4
-        self.fc = nn.Linear(self.config.hidden_size, 1024)
-        self.fc2 = nn.Linear(1024, 2)
+        self.fc = nn.Linear(self.config.hidden_size, 256)
+        self.fc2 = nn.Linear(256, n_outputs)
         self.drop = nn.Dropout(0.5)
-        self.tokenizer = BertTokenizer.from_pretrained('DeepPavlov/rubert-base-cased-sentence')
-        self.tokenizer.model_max_length = 10
+        self.tokenizer = BertTokenizer.from_pretrained('DeepPavlov/rubert-base-cased-conversational')
+        self.tokenizer.model_max_length = 128
 
     def forward(self, *args, **kwargs):
-        x = self.bert(*args, **kwargs).last_hidden_state.mean(axis=1)
-        x = nn.ReLU()(x)
+        x = self.bert(*args, **kwargs).pooler_output # last_hidden_state.mean(axis=1)
         x = self.drop(x)
-
         x = self.fc(x)
         x = nn.ReLU()(x)
-        # x = self.drop(x)
+        x = self.drop(x)
         x = self.fc2(x)
         return x
 

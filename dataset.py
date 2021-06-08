@@ -23,7 +23,7 @@ def count_by_theme(df, theme):
     """
     counts = df.pivot_table(index='text_id', columns=theme, aggfunc='size', fill_value=0)
     # counts = counts.apply(lambda x: x / x.sum(), axis=1)
-    texts = df[['text_id', 'text']].drop_duplicates().set_index('text_id')
+    texts = df[['text_id', 'text', 'p_opinion']].drop_duplicates().set_index('text_id')
     res = texts.join(counts, on='text_id')
     res['rel'] = res[['impos',  'irrel',  'neg',  'neut',  'pos',  'posneg']].sum(axis=1)\
                  - res['irrel']
@@ -71,11 +71,37 @@ def write_statistics(df):
     stat.to_csv('mydata/labelled/statistics.tsv', sep='\t')
 
 
+def score_opinion(df):
+    from bertcls import Klassifier, device, myDataset, predict
+    import torch
+    from torch.utils.data import DataLoader
+    import numpy as np
+
+    model = Klassifier().to(device)
+    checkpoint = torch.load(f'models/opinion_cls_final.pt', map_location=torch.device('cpu'))
+    model.load_state_dict(checkpoint['model'])
+
+    data = df.text.tolist()
+    labels = [1] * len(data)
+    ds = myDataset(range(len(data)), data, labels)
+    dl = DataLoader(ds, batch_size=32, shuffle=False)
+    _, _, y_probs = predict(model, dl)
+    df['p_opinion'] = np.array(y_probs)[:, 1]
+
+
 if __name__ == '__main__':
     pd.set_option("display.max_rows", 100, "display.max_columns", None)
 
-    filename = 'mydata/labelled/results_20210514201313.tsv'
+    filename = 'mydata/labelled/results_20210607202756.tsv'
     df = read_file(filename)
+
+    unique_texts = df.drop_duplicates(subset='text_id')
+
+    score_opinion(unique_texts)
+
+    unique_texts = unique_texts[['text_id', 'p_opinion']]
+
+    df = pd.merge(df, unique_texts, on='text_id')
 
     write_statistics(df)
 
@@ -112,12 +138,12 @@ if __name__ == '__main__':
 
         counts['relevant'] = 0
         counts.loc[relevant.index, 'relevant'] = 1
-        counts = counts[['text', 'relevant']]
+        counts = counts[['text', 'relevant', 'p_opinion']]
         counts.to_csv(f'mydata/labelled/{t}/{t}_relevance.tsv', sep='\t', quoting=3)
 
         # relevant = relevant.drop(intersection_ids)
         # relevant = relevant.drop(columns=cols)
-        relevant = relevant[['text']]
+        relevant = relevant[['text', 'p_opinion']]
         relevant['sentiment'] = 0
         relevant.loc[positive.index, 'sentiment'] = 2
         relevant.loc[other.index, 'sentiment'] = 1
