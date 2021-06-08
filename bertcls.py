@@ -160,13 +160,14 @@ def plot_history(loss_history, validation, F1, acc, sizes, title="", clear_outpu
     return fig
 
 
-def cross_validation(model, params, data, labels, n_splits=4, title=''):
+def cross_validation(model, params, data, labels, n_splits=4, title=''): # look in colab!
     BS = params['BS']
     EPOCHS = params['n_epochs']
 
     cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=3)
-    probabilities = []
-    gts = []
+    probabilities = [[] for e in range(EPOCHS)]
+    gts = [[] for e in range(EPOCHS)]
+    print(len(gts))
 
     epoch_size = len(data) / n_splits * (n_splits - 1)
     epoch_size = int(epoch_size)
@@ -201,22 +202,30 @@ def cross_validation(model, params, data, labels, n_splits=4, title=''):
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         scheduler = OneCycleLR(optimizer, max_lr=params['max_lr'], steps_per_epoch=ceil(len(train_ds) / BS),
-                                            epochs=EPOCHS, anneal_strategy='linear')
+                               epochs=EPOCHS, anneal_strategy='linear')
         epoch = 0
         for epoch_history, test_loss, test_scores, y_true, probs in \
-                train(model, optimizer, scheduler, train_dl, EPOCHS, None):
+                train(model, optimizer, scheduler, train_dl, EPOCHS, test_dl):
             loss_history[epoch] += epoch_history
             val_history[epoch] += test_loss
-            for m, val in test_scores.items():
-                scores_avg[m][epoch] += val
-            epoch += 1
+            # for m, val in test_scores.items():
+            # scores_avg[m][epoch] += val=
 
-        loss, y_test, probs = predict(model, test_dl)
-        probabilities.extend(probs)
-        gts.extend(y_test)
+            # loss, y_test, probs = predict(model, test_dl)
+            probabilities[epoch].extend(probs)
+            gts[epoch].extend(y_true)
+            epoch += 1
 
     with open(f'history/{title}_{type(model).__name__}_probs_CV.pk', 'wb') as f:
         pickle.dump((gts, probabilities), f)
+
+    f1 = []
+    acc = []
+    for e in range(EPOCHS):
+        y_true = gts[e]
+        y_pred = np.argmax(probabilities[e], axis=1)
+        f1.append(f1_score(y_true, y_pred, average='binary' if model.nout == 2 else 'macro'))
+        acc.append(accuracy_score(y_true, y_pred))
 
     for m in scores_avg:
         scores_avg[m] /= n_splits
@@ -224,7 +233,7 @@ def cross_validation(model, params, data, labels, n_splits=4, title=''):
     val_history /= n_splits
     sizes = np.cumsum([epoch_size for i in range(EPOCHS)])
 
-    fig = plot_history(loss_history.reshape(-1), val_history, scores_avg['F1'], scores_avg['accuracy'],
+    fig = plot_history(loss_history.reshape(-1), val_history, f1, acc,
                        sizes, title=title, clear_output=False)
 
     fig.savefig(f'plots/{title}_{type(model).__name__}_plot_CV.png')
