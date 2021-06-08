@@ -61,9 +61,11 @@ def apply_model(model, texts):
     if type(texts[0]) is str:
         input_data = tokenizer(texts, padding=True, return_tensors='pt', truncation=True)
     else:
-        input_data = tokenizer(*texts, padding=True, return_tensors='pt', truncation=True)
+        text_features = [t for t in texts if type(t[0]) is str]
+        other_features = [t.to(device) for t in texts if type(t[0]) is not str]
+        input_data = tokenizer(*text_features, padding=True, return_tensors='pt', truncation=True)
     todevice(input_data)
-    output = model(**input_data)
+    output = model(other_features, **input_data)
     return output
 
 
