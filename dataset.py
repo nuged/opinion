@@ -78,7 +78,7 @@ def score_opinion(df):
     import numpy as np
 
     model = Klassifier().to(device)
-    checkpoint = torch.load(f'models/opinion_cls_final.pt', map_location=torch.device('cpu'))
+    checkpoint = torch.load(f'models/opinion_cls_final.pt', map_location=device)
     model.load_state_dict(checkpoint['model'])
 
     data = df.text.tolist()
