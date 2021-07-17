@@ -12,7 +12,7 @@ import gc
 from sklearn.metrics import confusion_matrix
 import pickle
 
-TASK = 'relevance'
+TASK = 'rel'
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # torch.set_num_threads(10)
@@ -26,7 +26,7 @@ class RuBERT_conv(nn.Module):
         self.config = self.bert.config
         self.config.max_position_embeddings = 256
         self.fc = nn.Linear(self.config.hidden_size, 512)
-        n_outputs = 2 if TASK == 'relevance' else 3
+        n_outputs = 2 if TASK == 'rel' else 3
         self.fc2 = nn.Linear(512, n_outputs)
         self.drop = nn.Dropout(0.5)
 
@@ -70,7 +70,7 @@ def train_epoch(model, optimizer, scheduler, train_dl):
 
 def train(model, optimizer, scheduler, train_dl, epochs, test_dl=None):
     model.train()
-    avg = 'binary' if TASK == 'relevance' else 'macro'
+    avg = 'binary' if TASK == 'rel' else 'macro'
     for epoch in range(epochs):
         epoch_history = train_epoch(model, optimizer, scheduler, train_dl)
         if test_dl is not None:
@@ -205,7 +205,7 @@ if __name__ == '__main__':
         print(f'{t}:')
         df = pd.read_csv(f'mydata/labelled/{t}/{t}_{TASK}.tsv', index_col=['text_id'], quoting=3, sep='\t')
         data = df.text.values
-        labels = df.sentiment.values if TASK == 'sentiment' else df.relevant.values
+        labels = df.sentiment.values if TASK == 'sen' else df.relevant.values
 
         results = {}
 

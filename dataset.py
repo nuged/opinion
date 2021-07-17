@@ -21,10 +21,11 @@ def count_by_theme(df, theme):
     :param theme: string
     :return: pd.DataFrame with unique texts and their counts
     """
-    counts = df.pivot_table(index='text_id', columns=theme, aggfunc='size', fill_value=0)
+    counts = df.pivot_table(index='text', columns=theme, aggfunc='size', fill_value=0)
     # counts = counts.apply(lambda x: x / x.sum(), axis=1)
-    texts = df[['text_id', 'text', 'p_opinion']].drop_duplicates().set_index('text_id')
-    res = texts.join(counts, on='text_id')
+    texts = df[['text_id', 'text', 'p_opinion']]
+    texts = texts[~texts.text.duplicated()].set_index('text_id')
+    res = texts.join(counts, on='text')
     res['rel'] = res[['impos',  'irrel',  'neg',  'neut',  'pos',  'posneg']].sum(axis=1)\
                  - res['irrel']
     return res
@@ -47,24 +48,24 @@ def statistics(count_df, theme=None):
 
 def count_annotators(df, theme=None):
     if theme is not None:
-        comments = df.groupby('text_id').filter(lambda x: (x[theme] != 'irrel').any())
+        comments = df.groupby('text').filter(lambda x: (x[theme] != 'irrel').any())
     else:
         comments = df
         theme = 'Total'
-    comments = comments.groupby('text_id')['user'].count()
+    comments = comments.groupby('text')['user'].count()
     comments = comments.value_counts().rename(theme)
     return comments
 
 
 def write_statistics(df):
-    counts = pd.DataFrame(columns=[1, 2, 3, 4])
+    counts = pd.DataFrame(columns=[1, 2, 3, 4, 5, 6])
     for t in [None, 'masks', 'vaccines', 'quarantine', 'government']:
         cdf = count_annotators(df, t)
         counts = counts.append(cdf)
     counts['number'] = counts.sum(axis=1).astype(int)
     counts.to_csv('mydata/labelled/annotator_counts.tsv', sep='\t')
 
-    stat = pd.DataFrame(columns=[1, 2, 3, 4])
+    stat = pd.DataFrame(columns=[1, 2, 3, 4, 5, 6])
     for t in ['masks', 'vaccines', 'quarantine', 'government']:
         cdf = count_by_theme(df, t)
         stat = stat.append(statistics(cdf, t))
@@ -72,6 +73,8 @@ def write_statistics(df):
 
 
 def score_opinion(df):
+    df['p_opinion'] = 0
+    return
     from bertcls import Klassifier, device, myDataset, predict
     import torch
     from torch.utils.data import DataLoader
@@ -92,16 +95,16 @@ def score_opinion(df):
 if __name__ == '__main__':
     pd.set_option("display.max_rows", 100, "display.max_columns", None)
 
-    filename = 'mydata/labelled/results_20210607202756.tsv'
+    filename = 'mydata/labelled/results_20210619121105.tsv'
     df = read_file(filename)
-
-    unique_texts = df.drop_duplicates(subset='text_id')
+    # df['p_opinion'] = 0
+    unique_texts = df.drop_duplicates(subset='text')
 
     score_opinion(unique_texts)
 
-    unique_texts = unique_texts[['text_id', 'p_opinion']]
+    unique_texts = unique_texts[['text', 'p_opinion']]
 
-    df = pd.merge(df, unique_texts, on='text_id')
+    df = pd.merge(df, unique_texts, on='text')
 
     write_statistics(df)
 
@@ -114,9 +117,9 @@ if __name__ == '__main__':
     for t in ['masks', 'vaccines', 'quarantine', 'government']:
         counts = count_by_theme(df, t)
 
-        relevant = counts[counts.irrel < counts[cols].sum(axis=1)]
-        positive = counts[counts.pos > 0]
-        negative = counts[counts.neg > 0]
+        relevant = counts[(counts.irrel == 0) | (counts.rel > 1)]
+        positive = relevant[relevant.pos > 0]
+        negative = relevant[relevant.neg > 0]
 
         intersection_ids = positive.index.intersection(negative.index)
         intersection = positive.loc[intersection_ids]
@@ -132,7 +135,7 @@ if __name__ == '__main__':
         neg_ids = intersection.neg > intersection.pos
         negative = negative.append(intersection[neg_ids])
 
-        other = relevant.drop(positive.index.union(negative.index))
+        other = relevant.drop(positive.index.union(negative.index),)
 
         print(f"{t}\t{relevant.shape[0]}\t{positive.shape[0]}\t{negative.shape[0]}\t{other.shape[0]}", file=f)
 
@@ -144,8 +147,8 @@ if __name__ == '__main__':
         # relevant = relevant.drop(intersection_ids)
         # relevant = relevant.drop(columns=cols)
         relevant = relevant[['text', 'p_opinion']]
-        relevant['sentiment'] = 0
-        relevant.loc[positive.index, 'sentiment'] = 2
-        relevant.loc[other.index, 'sentiment'] = 1
+        relevant['sen'] = 0
+        relevant.loc[positive.index, 'sen'] = 2
+        relevant.loc[other.index, 'sen'] = 1
         relevant.to_csv(f'mydata/labelled/{t}/{t}_sentiment.tsv', sep='\t', quoting=3)
     f.close()

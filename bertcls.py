@@ -42,7 +42,7 @@ class Klassifier(nn.Module):
         self.tokenizer.model_max_length = 128
 
     def forward(self, *args, **kwargs):
-        x = self.bert(*args, **kwargs).pooler_output # last_hidden_state.mean(axis=1)
+        x = self.bert(**kwargs).pooler_output # last_hidden_state.mean(axis=1)
         x = self.drop(x)
         x = self.fc(x)
         x = nn.ReLU()(x)
@@ -60,6 +60,7 @@ def apply_model(model, texts):
     tokenizer = model.tokenizer
     if type(texts[0]) is str:
         input_data = tokenizer(texts, padding=True, return_tensors='pt', truncation=True)
+        other_features = None
     else:
         text_features = [t for t in texts if type(t[0]) is str]
         other_features = [t.to(device) for t in texts if type(t[0]) is not str]

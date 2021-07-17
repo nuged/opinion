@@ -65,8 +65,8 @@ def get_stats(filename, answers):
 
 if __name__ == '__main__':
     for task in ['nli', 'qa']:
-        for set in ['relevance', 'sentiment']:
-            if task == 'qa' and set == 'relevance':
+        for set in ['rel', 'sen']:
+            if task == 'qa' and set == 'rel':
                 continue
             counts, scores = get_stats(filename=f'mydata/labelled/{set}_{task}.tsv',
                                         answers=f'mydata/labelled/res/{set}_{task.upper()}_RuBERT_conv.pk')
@@ -74,7 +74,7 @@ if __name__ == '__main__':
             scores.to_csv(f'mydata/labelled/res/{set}_{task}.tsv', sep='\t', quoting=3, mode='a')
 
     for t in ['masks', 'quarantine', 'government', 'vaccines']:
-        for task in ['relevance', 'sentiment']:
+        for task in ['rel', 'sen']:
             path = f'mydata/labelled/singles/{task}_{t}_single_RuBERT_conv.pk'
             with open(path, 'rb') as f:
                 y_true, y_pred = pickle.load(f)
